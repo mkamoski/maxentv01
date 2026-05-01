@@ -1,0 +1,8 @@
+﻿<maui:MauiWinUIApplication
+    x:Class="MyMaxEntV01.WinUI.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:maui="using:Microsoft.Maui"
+    xmlns:local="using:MyMaxEntV01.WinUI">
+
+</maui:MauiWinUIApplication>
