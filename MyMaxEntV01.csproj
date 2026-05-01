@@ -66,13 +66,19 @@
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
     </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="BepuPhysics" Version="2.5.0-beta.29" />
-        <PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-preview.3.26203.7" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="11.0.0-preview.3.26203.7" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-preview.3.26207.106" />
-        <PackageReference Include="ScottPlot.Blazor" Version="5.1.58" />
-        <PackageReference Include="System.Numerics.Vectors" Version="4.6.1" />
-    </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="BepuPhysics" Version="2.5.0-beta.29" />
+		<!--<PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-preview.3.26203.7" />-->
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+		<!--<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="11.0.0-preview.3.26203.7" />-->
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.20" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-preview.3.26207.106" />
+		<PackageReference Include="ScottPlot" Version="5.1.58" />
+		<PackageReference Include="ScottPlot.Blazor" Version="5.1.58" />
+		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
+		<PackageReference Include="System.Numerics.Vectors" Version="4.6.1" />
+		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.20" />
+	</ItemGroup>
+
 
 </Project>

@@ -1,0 +1,272 @@
+@page "/cartpole"
+@using MyMaxEntV01.Models
+@using MyMaxEntV01.Services
+@inject CartPoleChartService ChartService
+
+<PageTitle>CartPole - MaxEnt</PageTitle>
+
+<h1>CartPole with Maximum Entropy Reinforcement Learning</h1>
+
+<div class="mb-3">
+    <button class="btn btn-primary me-2" @onclick="Reset" disabled="@isRunning">Reset</button>
+    <button class="btn btn-success me-2" @onclick="Run" disabled="@isRunning">Run</button>
+    <button class="btn btn-danger me-2" @onclick="Stop" disabled="@(!isRunning)">Stop</button>
+    <button class="btn btn-info me-2" @onclick="ViewChart" disabled="@string.IsNullOrEmpty(lastChartPath)">View Graph</button>
+    <button class="btn btn-warning" @onclick="CleanupOldCharts">Cleanup Old Charts</button>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <h4>Simulation Parameters</h4>
+        <div class="mb-2">
+            <label>Episodes: @episodes</label>
+            <input type="range" class="form-range" min="1" max="100" @bind="episodes" disabled="@isRunning" />
+        </div>
+        <div class="mb-2">
+            <label>Max Steps per Episode: @maxSteps</label>
+            <input type="range" class="form-range" min="50" max="500" step="50" @bind="maxSteps" disabled="@isRunning" />
+        </div>
+        <div class="mb-2">
+            <label>Learning Rate: @learningRate.ToString("F4")</label>
+            <input type="range" class="form-range" min="0.0001" max="0.1" step="0.0001" @bind="learningRate" disabled="@isRunning" />
+        </div>
+    </div>
+    <div class="col-md-6">
+        <h4>Current State</h4>
+        <table class="table table-sm">
+            <tr>
+                <td>Episode:</td>
+                <td>@currentEpisode / @episodes</td>
+            </tr>
+            <tr>
+                <td>Step:</td>
+                <td>@currentStep</td>
+            </tr>
+            <tr>
+                <td>Total Reward:</td>
+                <td>@totalReward.ToString("F2")</td>
+            </tr>
+            <tr>
+                <td>Cart Position:</td>
+                <td>@cartPoleEnv?.CartPosition.ToString("F3")</td>
+            </tr>
+            <tr>
+                <td>Pole Angle:</td>
+                <td>@cartPoleEnv?.PoleAngle.ToString("F3") rad</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div class="mt-4">
+    <h4>Output Log</h4>
+    <div class="output-window">
+        <pre>@outputLog</pre>
+    </div>
+</div>
+
+<style>
+    .output-window {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        padding: 15px;
+        border-radius: 5px;
+        height: 400px;
+        overflow-y: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+    }
+</style>
+
+@code {
+    private CartPoleEnvironment? cartPoleEnv;
+    private MaxEntAgent? agent;
+
+    private int episodes = 10;
+    private int maxSteps = 200;
+    private double learningRate = 0.01;
+
+    private int currentEpisode = 0;
+    private int currentStep = 0;
+    private double totalReward = 0;
+
+    private bool isRunning = false;
+    private CancellationTokenSource? cancellationTokenSource;
+
+    private System.Text.StringBuilder outputLogBuilder = new System.Text.StringBuilder();
+    private string outputLog = string.Empty;
+
+    // Training history for charting
+    private List<double> episodeRewards = new List<double>();
+    private List<int> episodeSteps = new List<int>();
+    private List<double> episodeEntropies = new List<double>();
+
+    private string lastChartPath = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        Reset();
+    }
+
+    private void Reset()
+    {
+        cartPoleEnv = new CartPoleEnvironment();
+        agent = new MaxEntAgent(stateSize: 4, actionSize: 2, learningRate: learningRate);
+
+        currentEpisode = 0;
+        currentStep = 0;
+        totalReward = 0;
+
+        episodeRewards.Clear();
+        episodeSteps.Clear();
+        episodeEntropies.Clear();
+        lastChartPath = string.Empty;
+
+        outputLogBuilder.Clear();
+        AppendLog("CartPole environment initialized.");
+        AppendLog($"State space: 4 dimensions [cart_pos, cart_vel, pole_angle, pole_vel]");
+        AppendLog($"Action space: 2 actions [left, right]");
+        AppendLog("Ready to run MaxEnt training...\n");
+
+        StateHasChanged();
+    }
+
+    private async Task Run()
+    {
+        if (isRunning) return;
+
+        isRunning = true;
+        cancellationTokenSource = new CancellationTokenSource();
+
+        // Clear previous training history
+        episodeRewards.Clear();
+        episodeSteps.Clear();
+        episodeEntropies.Clear();
+
+        AppendLog($"Starting MaxEnt training for {episodes} episodes...\n");
+
+        try
+        {
+            for (currentEpisode = 1; currentEpisode <= episodes; currentEpisode++)
+            {
+                if (cancellationTokenSource.Token.IsCancellationRequested)
+                    break;
+
+                var state = cartPoleEnv!.Reset();
+                double episodeReward = 0;
+
+                for (currentStep = 0; currentStep < maxSteps; currentStep++)
+                {
+                    if (cancellationTokenSource.Token.IsCancellationRequested)
+                        break;
+
+                    // Agent selects action using MaxEnt policy
+                    int action = agent!.SelectAction(state);
+
+                    // Environment step
+                    var (nextState, reward, done) = cartPoleEnv.Step(action);
+
+                    // Agent learns using MaxEnt update
+                    agent.Learn(state, action, reward, nextState, done);
+
+                    episodeReward += reward;
+                    totalReward += reward;
+                    state = nextState;
+
+                    if (done)
+                        break;
+
+                    // Update UI periodically
+                    if (currentStep % 10 == 0)
+                    {
+                        StateHasChanged();
+                        await Task.Delay(1);
+                    }
+                }
+
+                // Record episode metrics
+                episodeRewards.Add(episodeReward);
+                episodeSteps.Add(currentStep + 1);
+                episodeEntropies.Add(agent!.GetEntropy());
+
+                AppendLog($"Episode {currentEpisode}/{episodes} - Steps: {currentStep + 1}, Reward: {episodeReward:F2}, Entropy: {agent!.GetEntropy():F4}");
+
+                StateHasChanged();
+                await Task.Delay(10);
+            }
+
+            AppendLog($"\nTraining complete!");
+            AppendLog($"Total reward: {totalReward:F2}");
+            AppendLog($"Average reward per episode: {(totalReward / episodes):F2}");
+            AppendLog($"Final policy entropy: {agent!.GetEntropy():F4}");
+
+            // Generate chart
+            if (episodeRewards.Count > 0)
+            {
+                AppendLog("\nGenerating training chart...");
+                try
+                {
+                    lastChartPath = ChartService.GenerateTrainingChart(episodeRewards, episodeSteps, episodeEntropies);
+                    AppendLog($"Chart saved to: {lastChartPath}");
+                    AppendLog("Click 'View Graph' to open the chart.");
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"Error generating chart: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"\nError: {ex.Message}");
+        }
+        finally
+        {
+            isRunning = false;
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = null;
+            StateHasChanged();
+        }
+    }
+
+    private void Stop()
+    {
+        cancellationTokenSource?.Cancel();
+        AppendLog("\nTraining stopped by user.");
+    }
+
+    private void ViewChart()
+    {
+        if (string.IsNullOrEmpty(lastChartPath))
+            return;
+
+        try
+        {
+            ChartService.OpenChartInViewer(lastChartPath);
+            AppendLog($"Opening chart in default image viewer...");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Error opening chart: {ex.Message}");
+        }
+    }
+
+    private void CleanupOldCharts()
+    {
+        try
+        {
+            int deletedCount = ChartService.CleanupOldCharts();
+            AppendLog($"Cleanup complete: {deletedCount} old chart(s) deleted (older than 28 days).");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Error during cleanup: {ex.Message}");
+        }
+    }
+
+    private void AppendLog(string message)
+    {
+        outputLogBuilder.AppendLine(message);
+        outputLog = outputLogBuilder.ToString();
+    }
+}
