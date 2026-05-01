@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using MyMaxEntV01.Services;
 
 namespace MyMaxEntV01
 {
@@ -16,9 +17,12 @@ namespace MyMaxEntV01
 
             builder.Services.AddMauiBlazorWebView();
 
+            // Register CartPole chart service
+            builder.Services.AddSingleton<CartPoleChartService>();
+
 #if DEBUG
-    		builder.Services.AddBlazorWebViewDeveloperTools();
-    		builder.Logging.AddDebug();
+            builder.Services.AddBlazorWebViewDeveloperTools();
+            builder.Logging.AddDebug();
 #endif
 
             return builder.Build();
