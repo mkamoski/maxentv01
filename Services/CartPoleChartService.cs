@@ -1,5 +1,6 @@
 using ScottPlot;
 using System.Diagnostics;
+using System.Runtime.Versioning;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -212,6 +213,7 @@ namespace MyMaxEntV01.Services
         /// <summary>
         /// Open the chart image in Windows default image viewer
         /// </summary>
+        [SupportedOSPlatform("windows")]
         public void OpenChartInViewer(string filePath)
         {
             if (!File.Exists(filePath))
