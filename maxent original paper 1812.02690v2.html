@@ -1,0 +1,478 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><head><title></title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+<div style="page-break-before:always; page-break-after:always"><div><p>Provably Efficient Maximum Entropy Exploration<br/>Elad Hazan1 2 Sham M. Kakade1 3 4 Karan Singh1 2 Abby Van Soest2<br/></p>
+<p>1 Google AI Princeton<br/>2 Department of Computer Science, Princeton University<br/></p>
+<p>3 Allen School of Computer Science and Engineering, University of Washington<br/>4 Department of Statistics, University of Washington<br/></p>
+<p>{ehazan,karans,asoest}@princeton.edu, sham@cs.washington.edu<br/></p>
+<p>Abstract<br/>Suppose an agent is in a (possibly unknown) Markov Decision Process in the absence of a reward<br/></p>
+<p>signal, what might we hope that an agent can efficiently learn to do? This work studies a broad class of<br/>objectives that are defined solely as functions of the state-visitation frequencies that are induced by how<br/>the agent behaves. For example, one natural, intrinsically defined, objective problem is for the agent to<br/>learn a policy which induces a distribution over state space that is as uniform as possible, which can be<br/>measured in an entropic sense. We provide an efficient algorithm to optimize such such intrinsically defined<br/>objectives, when given access to a black box planning oracle (which is robust to function approximation).<br/>Furthermore, when restricted to the tabular setting where we have sample based access to the MDP, our<br/>proposed algorithm is provably efficient, both in terms of its sample and computational complexities.<br/>Key to our algorithmic methodology is utilizing the conditional gradient method (a.k.a. the Frank-Wolfe<br/>algorithm) which utilizes an approximate MDP solver.<br/></p>
+<p>1 Introduction<br/>A fundamental problem in reinforcement learning is that of exploring the state space. How do we understand<br/>what is even possible in a given environment without a reward signal?<br/></p>
+<p>This question has received a lot of attention, with approaches such as learning with intrinsic reward and<br/>curiosity driven methods, surveyed below. Our work studies a class of objectives that is defined solely as<br/>function of the state-visitation frequencies. A natural such objective is finding a policy that maximizes the<br/>entropy of the induced distribution over the state space. More generally, our approach extends to any concave<br/>function over distributions.<br/></p>
+<p>Suppose the MDP is fully and precisely known, in terms of states, actions, and the entire transition matrix.<br/>Then maximizing the entropy can be recast as a convex optimization problem (see Section 3.2.2 or [DFVR03])<br/>over the space of state-visitation frequencies induced by the exhaustive set of all policies. However, most RL<br/>instances that are common in practice exhibit at least one of several complications:<br/></p>
+<p>&#8212; prohibitively large state space (i.e. Chess or Go)<br/>&#8212; unknown transition matrix (as in common Atari games)<br/>These scenarios often require function approximation, ie. restricting the search to a non-linearly parameterized<br/>policy class (eg. neural networks), which makes the entropy maximization problem non-convex.<br/></p>
+<p>As a remedy for the computational difficulty, we propose considering an approximate planning oracle: an<br/>efficient method that given a well-specified reward signal can find an optimizing policy. Such sample-based<br/>planning oracles have been empirically observed to work well with non-linear policy classes. Given such an<br/>oracle, we give a provably efficient method for exploration based on the conditional gradient (or Frank-Wolfe)<br/>algorithm [FW56].<br/></p>
+<p>1<br/></p>
+<p>ar<br/>X<br/></p>
+<p>iv<br/>:1<br/></p>
+<p>81<br/>2.<br/></p>
+<p>02<br/>69<br/></p>
+<p>0v<br/>2 <br/></p>
+<p> [<br/>cs<br/></p>
+<p>.L<br/>G<br/></p>
+<p>] <br/> 2<br/></p>
+<p>6 <br/>Ja<br/></p>
+<p>n <br/>20<br/></p>
+<p>19</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>Formally, we show how to generate a sequence of reward signals, that sequentially optimized give rise<br/>to a policy with entropy close to optimal. Our main theorem gives a bound on the number of calls to the<br/>planning oracle, which is independent of the size of the state space of the MDP. Next, we outline the efficient<br/>construction of such oracles and state the resultant sample &amp; computational complexity in the tabular MDP<br/>setting. As a proof of concept, we implement our method and show experiments over several mainstream RL<br/>tasks in Section 5.<br/></p>
+<p>1.1 Informal statement of contributions<br/>To facilitate exploration in potentially unknown MDPs within a restricted policy class, we assume access to<br/>the environment using the following two oracles:<br/></p>
+<p>Approximate planning oracle: Given a reward function (on states) r : S &#8594; R and a sub-optimality<br/>gap &#949;, the planning oracle returns a stationary policy &#960; = ApproxPlan(r, &#949;) with the guarantee that<br/>V (&#960;) &#8805; max&#960; V (&#960;)&#8722; &#949;, where V (&#960;) is the value of policy &#960;.<br/></p>
+<p>State distribution estimate oracle: A state distribution oracle estimates the state distribution<br/>d&#770;&#960; = DensityEst(&#960;, &#949;) of any given (non-stationary) policy &#960;, guaranteeing that &#8214;d&#960; &#8722; d&#770;&#960;&#8214;&#8734; &#8804; &#949;.<br/></p>
+<p>Given access to these two oracles, we describe a method that provably optimizes any continuous and<br/>smooth objective over the state-visitation frequencies. Of special interest is the maximum entropy and relative<br/>entropy objectives.<br/></p>
+<p>Theorem 1.1 (Main Theorem - Informal). There exists an efficient algorithm (Algorithm 1) such that for<br/>any &#946;-smooth measure R, and any &#949; &gt; 0, in O( 1<br/></p>
+<p>&#949; log 1<br/>&#949; ) calls to ApproxPlan &amp; DensityEst , it returns a<br/></p>
+<p>policy &#960;&#772; with<br/>R(d&#960;&#772;) &#8805; max<br/></p>
+<p>&#960;<br/>R(d&#960;)&#8722; &#949; .<br/></p>
+<p>1.2 Related work<br/>We review related works in this section.<br/></p>
+<p>Reward Shaping &amp; Imitation Learning: Direct optimization approaches to RL (such as policy<br/>gradient methods) tend to perform favorably when random sequences of actions lead the agent to some<br/>positive reward, but tend to fail when the rewards are sparse or myopic. Thus far, the most practical<br/>approaches to address this have either been through some carefully constructed reward shaping (e.g. [NHR99]<br/>where dense reward functions are provided to make the optimization problem more tractable) or through<br/>inverse reinforcement learning and imitation learning [AN04, RGB11] (where an expert demonstrates to the<br/>agent how to act).<br/></p>
+<p>PAC Learning: For the case of tabular Markov decision processes, the balance of exploration and<br/>exploitation has been addressed in that there are a number of methods which utilize confidence based reward<br/>bonuses to encourage exploration in order to ultimately behave near optimally [KS02, Kak03, SLW+06, LH14,<br/>DB15, SS10, AOM17].<br/></p>
+<p>Count-based Models &amp; Directed Exploration: There are a host of recent empirical success using<br/>deep RL methods which encourage exploration in some form[MKS+15, SHM+16]. The approaches which<br/>encourage exploration are based on a few related ideas: that of encouraging encouraging exploration through<br/>state visitation frequencies (e.g. [OBvdOM17, BSO+16, THF+17]) and those based on a intrinsic reward<br/>signal derived from novelty or prediction error [LLTyO12, PAED17, SRM+18, FCRL17, MJR15, HCC+16,<br/>WRR+17], aligning an intrinsic reward to the target objective [Kae93, CBS05, SLBS10, SLB09, ZOS18], or<br/>sample based approaches to tracking of value function uncertainty [OBPVR16, OAC18].<br/></p>
+<p>Intrinsic Learning: Works in [CBS05, SLB09, SLBS10] established computational theories of intrinsic<br/>reward signals (and how it might help with downstream learning of tasks) and other works also showed how<br/>to incorporate intrinsic rewards (in the absence of any true reward signal) [WdWK+18, BESK18, BEP+18,<br/>NPD+18]. The potential benefit is that such learning may help the agent reach a variety of achievable goals<br/>and do well on other extrinsically defined tasks, not just the task under which it was explicitly trained for<br/>under one specific reward function (e.g. see [CBS05, SLB09, WdWK+18, NPD+18]).<br/></p>
+<p>2</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>2 Preliminaries<br/>Markov decision process: An infinite-horizon discounted Markov Decision Process is a tuple M =<br/>(S,A, r, P, &#947;, d0), where S is the set of states, A is the set of actions, and d0 is the distribution of of the<br/>initial state s0. At each timestep t, upon observing the state st, the execution of action at triggers an<br/>observable reward of rt = r(st, at) and a transition to a new state st+1 &#8764; P (&#183;|st, at). The performance on an<br/>infinite sequence of states &amp; actions (hereafter, referred to as a trajectory) is judged through the (discounted)<br/>cumulative reward it accumulates, defined as<br/></p>
+<p>V (&#964; = (s0, a0, s1, a1, . . . )) = (1&#8722; &#947;)<br/>&#8734;&#8721;<br/>t=0<br/></p>
+<p>&#947;tr(st, at).<br/></p>
+<p>Policies: A policy is a (randomized) mapping from a history, say (s0, a0, r0, s1, a1, r1 . . . st&#8722;1, at&#8722;1, rt&#8722;1),<br/>to an action at. A stationary policy &#960; is a (randomized) function which maps a state to an action in a<br/>time-independent manner, i.e. &#960; : S &#8594; &#8710;(A). When a policy &#960; is executed on some MDP M, it produces a<br/>distribution over infinite-length trajectories &#964; = (s0, a0, s1, a1 . . . ) as specified below.<br/></p>
+<p>P (&#964; |&#960;) = P (s0)<br/>&#8734;&#8719;<br/>i=0<br/></p>
+<p>(&#960;(ai|si)P (si+1|si, ai))<br/></p>
+<p>The (discounted) value V&#960; of a policy &#960; is the expected cumulative reward an action sequence sampled from<br/>the policy &#960; gathers.<br/></p>
+<p>V&#960; = E<br/>&#964;&#8764;P (&#183;|&#960;)<br/></p>
+<p>V (&#964;) = (1&#8722; &#947;) E<br/>&#964;&#8764;P (&#183;|&#960;)<br/></p>
+<p>&#8734;&#8721;<br/>t=0<br/></p>
+<p>&#947;tr(st, at)<br/></p>
+<p>Induced state distributions: The t-step state distribution and the (discounted) state distribution of a<br/>policy &#960; that result are<br/></p>
+<p>dt,&#960;(s) = P (st = s|&#960;) =<br/>&#8721;<br/></p>
+<p>all &#964; with st=s<br/>P (&#964; |&#960;), (2.1)<br/></p>
+<p>dt,&#960;(s, a) = P (st = s, at = a|&#960;) =<br/>&#8721;<br/></p>
+<p>all &#964; with st=s,at=a<br/>P (&#964; |&#960;), (2.2)<br/></p>
+<p>d&#960;(s) = (1&#8722; &#947;)<br/>&#8734;&#8721;<br/>t=1<br/></p>
+<p>&#947;tdt,&#960;(s), (2.3)<br/></p>
+<p>d&#960;(s, a) = (1&#8722; &#947;)<br/>&#8734;&#8721;<br/>t=1<br/></p>
+<p>&#947;tdt,&#960;(s, a). (2.4)<br/></p>
+<p>The latter distribution can be viewed as the analogue of the stationary distribution in the infinite horizon<br/>setting.<br/></p>
+<p>Mixtures of stationary policies: Given a sequence of k policies C = (&#960;0, . . . &#960;k&#8722;1), and &#945; &#8712; &#8710;k,<br/>we define &#960;mix = (&#945;,C) to be a mixture over stationary policies. The (non-stationary) policy &#960;mix is one<br/>where, at the first timestep t = 0, we sample policy &#960;i with probability &#945;i and then use this policy for all<br/>subsequent timesteps. In particular, the behavior of a mixture &#960;mix with respect to an MDP is that it induces<br/>infinite-length trajectories &#964; = (s0, a0, s1, a1 . . . ) with the probability law :<br/></p>
+<p>P (&#964; |&#960;mix) =<br/>k&#8722;1&#8721;<br/>i=0<br/></p>
+<p>&#945;iP (&#964; |&#960;i) (2.5)<br/></p>
+<p>and the induced state distribution is:<br/></p>
+<p>d&#960;mix(s) =<br/>k&#8722;1&#8721;<br/>i=0<br/></p>
+<p>&#945;id&#960;i(s). (2.6)<br/></p>
+<p>3</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>Note that such a distribution over policies need not be representable as a stationary stochastic policy (even if<br/>the &#960;i&#8217;s are stationary) due to that the sampled actions are no longer conditionally independent given the<br/>states.<br/></p>
+<p>3 The Objective: MaxEnt Exploration<br/>As each policy induces a distribution over states, we can associate a concave reward functional R(&#183;) with this<br/>induced distribution. We say that a policy &#960;&#8727; is a maximum-entropy exploration policy, also to referred to as<br/>the max-ent policy, if the corresponding induced state distribution has the maximum possible R(d&#960;) among<br/>the class of all policies. Lemma 3.3 assures us that the search over the class of stationary policies is sufficient.<br/></p>
+<p>&#960;&#8727; &#8712; arg max<br/>&#960;<br/></p>
+<p>R(d&#960;).<br/></p>
+<p>Our goal is to find a policy that induces a state distribution with a comparable value of the reward functional.<br/></p>
+<p>3.1 Examples of reward functionals<br/>A possible quantity of interest that serves as a motivation for considering such functionals is the entropy of<br/>the induced distribution.<br/></p>
+<p>max<br/>&#960;<br/>{H(d&#960;) = &#8722; E<br/></p>
+<p>s&#8764;d&#960;<br/>log d&#960;(s)}<br/></p>
+<p>The same techniques we derive can also be used to optimize other entropic measures. For example, we may<br/>be interested in minimizing:<br/></p>
+<p>min<br/>&#960;<br/></p>
+<p>{<br/>KL(d&#960;||Q) = E<br/></p>
+<p>s&#8764;d&#960;<br/>log<br/></p>
+<p>d&#960;(s)<br/>Q(s)<br/></p>
+<p>}<br/>for some given distribution Q(s). Alternatively, we may seek to minimize a cross entropy measure:<br/></p>
+<p>min<br/>&#960;<br/></p>
+<p>{<br/>E<br/>s&#8764;Q<br/></p>
+<p>log<br/>1<br/></p>
+<p>d&#960;(s)<br/>= KL(Q||d&#960;) +H(Q)<br/></p>
+<p>}<br/>where the expectation is now under Q. For uniform Q, this latter measure may be more aggressive in forcing<br/>&#960; to have more uniform coverage than the entropy objective.<br/></p>
+<p>3.2 Landscape of the objective function<br/>In this section, we establish that the entropy of the state distribution is not a concave function of the policy.<br/>Similar constructions can establish analogous statements for other non-trivial functionals. Subsequently, we<br/>discuss a possible convex reformulation of the objective in the space of induced distributions which constitute<br/>a convex set.<br/></p>
+<p>3.2.1 Non-convexity in the policy space<br/></p>
+<p>Despite the concavity of the entropy function, our overall maximization problem is not concave as the state<br/>distribution is not an affine function of the policy. This is stated precisely in the following lemma.<br/></p>
+<p>Lemma 3.1. H(d&#960;) is not concave in &#960;.<br/></p>
+<p>Proof. Figure 1 demonstrates the behavior of &#960;0, &#960;1, &#960;2 on a 6-state MDP with binary actions. Note that for<br/>sufficiently large &#947; &#8594; 1 and any policy &#960;, the discounted state distribution converges to the distribution on<br/>the states at the second timestep, or formally d&#960; &#8594; d2,&#960;. Now with the realization &#960;0 = &#960;1+&#960;2<br/></p>
+<p>2 , observe that<br/>d2,&#960;0 is not uniform on {s2,0, s2,1, s2,2}, implying that H(d2,&#960;0) &lt;<br/></p>
+<p>H(d2,&#960;1 )+H(d2,&#960;2 )<br/>2 .<br/></p>
+<p>4</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>s0,0start<br/></p>
+<p>s1,0 s1,1<br/></p>
+<p>s2,0 s2,1 s2,2<br/></p>
+<p>1<br/>2<br/></p>
+<p>1<br/>2<br/></p>
+<p>3<br/>4<br/></p>
+<p>1<br/>4<br/></p>
+<p>1<br/>4<br/></p>
+<p>3<br/>4<br/></p>
+<p>1 1 1<br/></p>
+<p>(a) &#960;0, d2,&#960;0 =<br/>(<br/>3<br/>8<br/>, 1<br/>4<br/>, 3<br/>8<br/>)<br/></p>
+<p>s0,0start<br/></p>
+<p>s1,0 s1,1<br/></p>
+<p>s2,0 s2,1 s2,2<br/></p>
+<p>2<br/>3<br/></p>
+<p>1<br/>3<br/></p>
+<p>1<br/>2<br/></p>
+<p>1<br/>2<br/></p>
+<p>0 1<br/></p>
+<p>1 1 1<br/></p>
+<p>(b) &#960;1, d2,&#960;1 =<br/>(<br/>1<br/>3<br/>, 1<br/>3<br/>, 1<br/>3<br/>)<br/></p>
+<p>s0,0start<br/></p>
+<p>s1,0 s1,1<br/></p>
+<p>s2,0 s2,1 s2,2<br/></p>
+<p>1<br/>3<br/></p>
+<p>2<br/>3<br/></p>
+<p>1 0 1<br/>2<br/></p>
+<p>1<br/>2<br/></p>
+<p>1 1 1<br/></p>
+<p>(c) &#960;2, d2,&#960;2 =<br/>(<br/>1<br/>3<br/>, 1<br/>3<br/>, 1<br/>3<br/>)<br/></p>
+<p>Figure 1: Description of &#960;0, &#960;1, &#960;2.<br/></p>
+<p>Lemma 3.2. For any policy &#960; and MDP M, define the matrix P&#960; &#8712; R|S|&#215;|S| so that<br/></p>
+<p>P&#960;(s&#8242;, s) =<br/>&#8721;<br/>a&#8712;A<br/></p>
+<p>&#960;(a|s)P (s&#8242;|s, a).<br/></p>
+<p>Then it is true that<br/></p>
+<p>1. P&#960; is linear in &#960;,<br/></p>
+<p>2. dt,&#960; = P t&#960;d0 for all t &#8805; 0,<br/></p>
+<p>3. d&#960; = (1&#8722; &#947;)(I &#8722; &#947;P&#960;)&#8722;1d0.<br/></p>
+<p>Proof. Linearity of P&#960; is evident from the definition. (2,3) may be verified by calculation.<br/></p>
+<p>3.2.2 Convexity in the distribution space<br/></p>
+<p>Define the set of all induced distributions as K = {d : d(s, a) &#8805; 0 and satisfies the constraints stated below}.<br/>For every d &#8712; K, it is possible to construct a policy &#960; with d&#960; = d, and for every &#960;, d&#960; &#8712; K holds [Put14].&#8721;<br/></p>
+<p>a<br/>d(s, a) = (1&#8722; &#947;)d0(s) + &#947;<br/></p>
+<p>&#8721;<br/>s&#8242;,a&#8242;<br/></p>
+<p>P (s|s&#8242;, a&#8242;)d(s&#8242;, a&#8242;)<br/></p>
+<p>The search for a max-ent policy can be recast as a convex optimization problem over the space of distributions.<br/></p>
+<p>max<br/>d&#8712;K<br/></p>
+<p>R(d).<br/></p>
+<p>Although we outline this reduction for an unrestricted policy class, similar reductions are possible for linearly-<br/>parameterized policy classes. These techniques can be extended to the case of MDPs with unknown dynamics<br/>[DFVR03].<br/></p>
+<p>3.2.3 Sufficiency of Stationary Policies<br/></p>
+<p>The set of non-Markovian policies is richer than the set of Markov stationary policies in terms of the<br/>distributions over trajectories each may induce. A priori, it is not evident that maximizing R(d&#960;) over the<br/>set of stationary policies is sufficient to guarantee the optimality in a larger class of all policies. Lemma 3.3<br/>establishes this claim by equating the set of achievable induced state distributions for these two sets of policies.<br/></p>
+<p>Lemma 3.3. [Put14] For any possibly non-Markovian policy &#960;, define a stationary Markov policy &#960;&#8242; as<br/>&#960;&#8242;(a|s) = d&#960;(s,a)<br/></p>
+<p>d&#960;(s) . Then, d&#960; = d&#960;&#8242; .<br/></p>
+<p>5</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>Algorithm 1 Maximum-entropy policy computation.<br/>1: Input: Step size &#951;, number of iterations T , planning oracle error tolerance &#949;1 &gt; 0, state distribution<br/></p>
+<p>oracle error tolerance &#949;0 &gt; 0, reward functional R.<br/>2: Set C0 = {&#960;0} where &#960;0 is an arbitrary policy.<br/>3: Set &#945;0 = 1.<br/>4: for t = 0, . . . , T &#8722; 1 do<br/>5: Call the state distribution oracle on &#960;mix,t = (&#945;t, Ct):<br/></p>
+<p>d&#770;&#960;mix,t<br/>= DensityEst (&#960;mix,t, &#949;0)<br/></p>
+<p>6: Define the reward function rt as<br/></p>
+<p>rt(s) = &#8711;R(d&#770;&#960;mix,t<br/>) :=<br/></p>
+<p>dR(X)<br/>dX<br/></p>
+<p>&#8739;&#8739;&#8739;&#8739;&#8739;<br/>X=d&#770;&#960;mix,t<br/></p>
+<p>.<br/></p>
+<p>7: Compute the (approximately) optimal policy on rt:<br/></p>
+<p>&#960;t+1 = ApproxPlan (rt, &#949;1) .<br/></p>
+<p>8: Update &#960;mix,t+1 = (&#945;t+1, Ct+1) to be<br/></p>
+<p>Ct+1 = (&#960;0, . . . , &#960;t, &#960;t+1), (4.1)<br/>&#945;t+1 = ((1&#8722; &#951;)&#945;t, &#951;). (4.2)<br/></p>
+<p>9: end for<br/>10: return &#960;mix,T = (&#945;T , CT ).<br/></p>
+<p>4 Algorithms &amp; Main Results<br/>The algorithm maintains a distribution over policies, and proceeds by adding a new policy to the support of<br/>the mixture and reweighing the components. To describe the algorithm, we will utilize access to two kinds of<br/>oracles. The constructions for these are detailed in later sections.<br/></p>
+<p>Approximate planning oracle: Given a reward function (on states) r : S &#8594; R and a sub-optimality<br/>gap &#949;1, the planning oracle returns a stationary1 policy &#960; = ApproxPlan(r, &#949;1) with the guarantee that<br/>V&#960; &#8805; max&#960; V&#960; &#8722; &#949;1.<br/></p>
+<p>State distribution estimate oracle: A state distribution oracle estimates the state distribution<br/>d&#770;&#960; = DensityEst(&#960;, &#949;0) of any given (non-stationary) policy &#960;, guaranteeing that &#8214;d&#960; &#8722; d&#770;&#960;&#8214;&#8734; &#8804; &#949;0.<br/></p>
+<p>We shall assume in the following discussion that the reward functional R is &#946;-smooth, B-bounded, and<br/>that it satisfies the following inequality for all X,Y .<br/></p>
+<p>&#8214;&#8711;R(X)&#8722;&#8711;R(Y )&#8214;&#8734; &#8804; &#946;&#8214;X &#8722; Y &#8214;&#8734; (4.3)<br/>&#8722; &#946;I &#22; &#8711;2R(X) &#22; &#946;I; &#8214;&#8711;R(X)&#8214;&#8734; &#8804; B (4.4)<br/></p>
+<p>Theorem 4.1 (Main Theorem). For any &#949; &gt; 0, set &#949;1 = 0.1&#949;, &#949;0 = 0.1&#946;&#8722;1&#949;, and &#951; = 0.1&#946;&#8722;1&#949;. When<br/>Algorithm 1 is run for T iterations where:<br/></p>
+<p>T &#8805; 10&#946;&#949;&#8722;1 log 10B&#949;&#8722;1 ,<br/></p>
+<p>we have that:<br/>R(&#960;mix,T ) &#8805; max<br/></p>
+<p>&#960;<br/>R(d&#960;)&#8722; &#949; .<br/></p>
+<p>1As the oracle is solving a discounted problem, we know the optimal value is achieved by a stationary policy.<br/></p>
+<p>6</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>Before we begin the proof, we state the implication for maximizing the entropy of the induced distribution.<br/>While the entropy objective is, strictly speaking, not smooth, one may consider a smoothed alternative H&#963;<br/>defined below.<br/></p>
+<p>H&#963;(d&#960;) = &#8722;Es&#8764;d&#960; log(d&#960;(s) + &#963;)<br/>When the algorithm is fed H&#963; as the proxy reward functional, it is possible make sub-optimality guarantees<br/>on the true objective H. Lemma 4.3 (D) relates the entropy functional H to its smoothed variant H&#963;, while<br/>the rest of the lemma quantifies smoothness of H&#963;. The factors of |S| incurred below are a consequence of<br/>imposed smoothing on H, and are not necessary for naturally smooth objectives.<br/></p>
+<p>Corollary 4.2. For any &#949; &gt; 0, set &#963; = 0.1&#949;<br/>2|S| , &#949;1 = 0.1&#949;, &#949;0 = 0.1&#949;2<br/></p>
+<p>80|S| , and &#951; = 0.1&#949;2<br/>40|S| . When Algorithm 1 is run<br/></p>
+<p>for T iterations with the reward functional H&#963;, where:<br/></p>
+<p>T &#8805; 40|S|<br/>0.1&#949;2<br/></p>
+<p>log<br/>log |S|<br/>0.1&#949;<br/></p>
+<p>,<br/></p>
+<p>we have that:<br/>H(&#960;mix,T ) &#8805; max<br/></p>
+<p>&#960;<br/>H(d&#960;)&#8722; &#949; .<br/></p>
+<p>We continue with the proof of the main theorem.<br/></p>
+<p>Proof of Theorem 4.1. Let &#960;&#8727; be a maximum-entropy policy, ie. &#960;&#8727; &#8712; arg max&#960; R(d&#960;).<br/></p>
+<p>R(d&#960;mix,t+1) = R((1&#8722; &#951;)d&#960;mix,t + &#951;d&#960;t+1) Equation 2.6<br/>&#8805; R(d&#960;mix,t<br/></p>
+<p>) + &#951;&#12296;d&#960;t+1<br/>&#8722; d&#960;mix,t<br/></p>
+<p>,&#8711;R(d&#960;mix,t<br/>)&#12297; &#8722; &#951;2&#946;&#8214;d&#960;t+1<br/></p>
+<p>&#8722; d&#960;mix,t<br/>&#8214;22 smoothness<br/></p>
+<p>The second inequality follows from the smoothness of R. (See Section 2.1 in [B+15] for equivalent definitions<br/>of smoothness in terms of the function value and the Hessian.)<br/></p>
+<p>To incorporate the error due to the two oracles, observe<br/></p>
+<p>&#12296;d&#960;t+1<br/>,&#8711;R(d&#960;mix,t<br/></p>
+<p>)&#12297; &#8805; &#12296;d&#960;t+1<br/>,&#8711;R(d&#770;&#960;mix,t<br/></p>
+<p>)&#12297; &#8722; &#946;&#8214;d&#960;mix,t<br/>&#8722; d&#770;&#960;mix,t<br/></p>
+<p>&#8214;&#8734;<br/>&#8805; &#12296;d&#960;&#8727; ,&#8711;R(d&#770;&#960;mix,t<br/></p>
+<p>)&#12297; &#8722; &#946;&#949;0 &#8722; &#949;1<br/></p>
+<p>&#8805; &#12296;d&#960;&#8727; ,&#8711;R(d&#960;mix,t<br/>)&#12297; &#8722; 2&#946;&#949;0 &#8722; &#949;1<br/></p>
+<p>The first and last inequalities invoke the assumptions laid out in Equation 4.3. Note that the second inequality<br/>above follows from the defining character of the planning oracle, ie. with respect to the reward vector<br/>rt = &#8711;R(d&#770;&#960;mix,t<br/></p>
+<p>), for any policy &#960;&#8242;, it holds true that<br/></p>
+<p>V&#960;t+1<br/>= &#12296;d&#960;t+1<br/></p>
+<p>, rt&#12297; &#8805; V&#960;&#8242; &#8722; &#949;1 = &#12296;d&#960;&#8242; , rt&#12297; &#8722; &#949;1<br/></p>
+<p>In particular, this statement holds for the choice &#960;&#8242; = &#960;&#8727;. This argument does not rely on &#960;&#8727; being a<br/>stationary policy, since &#960;t+1 is an optimal policy for the reward function rt among the class of all policies.<br/></p>
+<p>Using the above fact and continuing on<br/></p>
+<p>R(d&#960;mix,t+1<br/>) &#8805; R(d&#960;mix,t<br/></p>
+<p>) + &#951;&#12296;d&#960;&#8727; &#8722; d&#960;mix,t<br/>,&#8711;R(d&#960;mix,t<br/></p>
+<p>)&#12297; &#8722; 2&#951;&#946;&#949;0 &#8722; &#951;&#949;1 &#8722; &#951;2&#946;<br/>&#8805; (1&#8722; &#951;)R(d&#960;mix,t) + &#951;R(d&#960;&#8727;)&#8722; 2&#951;&#946;&#949;0 &#8722; &#951;&#949;1 &#8722; &#951;2&#946;<br/></p>
+<p>The last step here utilizes the concavity of R. Indeed, the inequality follows immediately from the sub-gradient<br/>characterization of concave functions. Now, with the aid of the above, we observe the following inequality.<br/></p>
+<p>R(d&#960;&#8727;)&#8722;R(d&#960;mix,t+1<br/>) &#8804; (1&#8722; &#951;)(R(d&#960;&#8727;)&#8722;R(d&#960;mix,t<br/></p>
+<p>)) + 2&#951;&#946;&#949;0 + &#951;&#949;1 + &#951;2&#946;.<br/></p>
+<p>Telescoping the inequality, this simplifies to<br/></p>
+<p>R(d&#960;&#8727;)&#8722;R(d&#960;mix,T<br/>) &#8804; (1&#8722; &#951;)T (R(d&#960;&#8727;)&#8722;R(d&#960;mix,0<br/></p>
+<p>)) + 2&#946;&#949;0 + &#949;1 + &#951;&#946;<br/>&#8804; Be&#8722;T&#951; + 2&#946;&#949;0 + &#949;1 + &#951;&#946;.<br/></p>
+<p>Setting &#949;1 = 0.1&#949;, &#949;0 = 0.1&#946;&#8722;1&#949;, &#951; = 0.1&#946;&#8722;1&#949;, T = &#951;&#8722;1 log 10B&#949;&#8722;1 suffices.<br/></p>
+<p>7</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>The following lemma is helpful in proving the corollary for the entropy functional.<br/></p>
+<p>Lemma 4.3. For any two distributions P,Q &#8712; &#8710;d:<br/></p>
+<p>(A) (&#8711;H&#963;(P ))i = &#8722;<br/>(<br/></p>
+<p>log(Pi + &#963;) + Pi<br/>Pi+&#963;<br/></p>
+<p>)<br/>,<br/></p>
+<p>(B) H&#963;(P ) in concave in P ,<br/></p>
+<p>(C) H&#963;(P ) is 2&#963;&#8722;1 smooth, ie.<br/>&#8722;2&#963;&#8722;1Id &#22; &#8711;2R(P ) &#22; 2&#963;&#8722;1Id,<br/></p>
+<p>(D) |H&#963;(P )&#8722;R(P )| &#8804; d&#963;,<br/></p>
+<p>(E) &#8214;&#8711;H&#963;(P )&#8722;&#8711;H&#963;(Q)&#8214;&#8734; &#8804; 2&#963;&#8722;1&#8214;P &#8722;Q&#8214;&#8734;.<br/></p>
+<p>Proof of Lemma 4.3. (A) may be verified by explicit calculation. Observe &#8711;2H&#963;(P ) is a diagonal matrix<br/>with entries<br/></p>
+<p>(&#8711;2H&#963;(P ))i,i = &#8722; Pi + 2&#963;<br/>(Pi + &#963;)2<br/></p>
+<p>.<br/></p>
+<p>(B) is immediate. (C) follows as |(&#8711;2H&#963;(P ))i,i| &#8804; 2&#963;&#8722;1.<br/></p>
+<p>|H&#963;(P )&#8722;H(P )| =<br/>d&#8722;1&#8721;<br/>i=0<br/></p>
+<p>Pi log<br/>Pi + &#963;<br/>Pi<br/></p>
+<p>&#8804;<br/>d&#8722;1&#8721;<br/>i=0<br/></p>
+<p>Pi<br/>&#963;<br/>Pi<br/></p>
+<p>= d&#963;.<br/></p>
+<p>The last inequality follows from log x &#8804; x&#8722; 1,&#8704;x &gt; 0. Finally, to see (E), using Taylor&#8217;s theorem, observe<br/></p>
+<p>&#8214;&#8711;H&#963;(P )&#8722;&#8711;H&#963;(Q)&#8214;&#8734; &#8804; max<br/>i,&#945;&#8712;[0,1]<br/></p>
+<p>|(&#8711;2H&#963;(&#945;P + (1&#8722; &#945;)Q)i,i|&#8214;P &#8722;Q&#8214;&#8734;<br/>&#8804; 2&#963;&#8722;1&#8214;P &#8722;Q&#8214;&#8734;.<br/></p>
+<p>4.1 Tabular setting<br/>In general, the construction of provably computationally efficient approximate planning oracle for MDPs with<br/>large or continuous state spaces poses a challenge. Discounting limited settings (eg. the Linear Quadratic<br/>Regulators [Ber05], [FGKM18]), one may only appeal to the recent empirical successes of sample-based<br/>planning algorithms that rely on the power of non-linear function approximation.<br/></p>
+<p>Nevertheless, one may expect, and possibly require, that any solution proposed to address the general<br/>case performs reasonably when restricted to the tabular setting. In this spirit, we outline the construction of<br/>the required oracles in the tabular setting.<br/></p>
+<p>4.1.1 The known MDP case<br/></p>
+<p>With the knowledge of the transition matrix P of a MDP M in the form of an explicit tensor, the planning<br/>oracle can be implemented via any of the exact solution methods [Ber05], eg. value iteration, linear<br/>programming. The state distribution oracle can be efficiently implemented as Lemma 3.2 suggests.<br/></p>
+<p>Corollary 4.4. When the MDP M is known explicitly, with the oracles described in Section 4, Algorithm 1<br/>runs in poly<br/></p>
+<p>(<br/>&#946;, |S|, |A|, 1<br/></p>
+<p>1&#8722;&#947; ,<br/>1<br/>&#949; , logB<br/></p>
+<p>)<br/>time to guarantee R(d&#960;mix,T<br/></p>
+<p>) &#8805; max&#960; R(d&#960;)&#8722; &#949;.<br/></p>
+<p>8</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>4.1.2 The unknown MDP case<br/></p>
+<p>For the case of an unknown MDP, a sample-based algorithm must iteratively try to learn about the MDP<br/>through its interactions with the environment. Here, we assume a &#947;-discounted episodic setting, where the<br/>agent can act in the environment starting from s0 &#8764; d0 for some number of steps, and is then able to reset.<br/>Our measure of sample complexity in this setting is the number of O&#771;<br/></p>
+<p>(<br/>(1&#8722; &#947;)&#8722;1<br/></p>
+<p>)<br/>-length episodes the agent<br/></p>
+<p>must sample to achieve a &#949;-suboptimal performance guarantee.<br/>The algorithm outlined below makes a distinction between the set of states it is (relatively) sure about<br/></p>
+<p>and the set of states that have not been visited enough number of times yet. The algorithm and the analysis<br/>is similar to the E3 algorithm [KS02]. Since algorithms like E3 proceed by building a relatively accurate<br/>model on the set of reachable states, as opposed to estimate of the value functions, this permits the reuse of<br/>information across different invocations, each of which might operate on a different reward signal.<br/></p>
+<p>Theorem 4.5. For an unknown MDP, with Algorithm 2 as the planning oracle and Algorithm 3 as the dis-<br/>tribution estimate oracle, Algorithm 1 runs in poly<br/></p>
+<p>(<br/>&#946;, |S|, |A|, 1<br/></p>
+<p>1&#8722;&#947; ,<br/>1<br/>&#949;<br/></p>
+<p>)<br/>time and executes O&#771;<br/></p>
+<p>(<br/>B3|S|2|A|<br/>&#949;3(1&#8722;&#947;)2 + &#946;3<br/></p>
+<p>&#949;3<br/></p>
+<p>)<br/>episodes of length O&#771;<br/></p>
+<p>(<br/>log |S|&#949;&#8722;1<br/></p>
+<p>log &#947;&#8722;1<br/></p>
+<p>)<br/>to guarantee that<br/></p>
+<p>R(d&#960;mix,T<br/>) &#8805; max<br/></p>
+<p>&#960;<br/>R(d&#960;)&#8722; &#949;.<br/></p>
+<p>A sub-optimality bound may be derived on the non-smooth entropy functional H via Lemma 4.3. Again,<br/>the extraneous factors introduced in the process are a consequence of the imposed smoothing via H&#963;.<br/></p>
+<p>Corollary 4.6. For an unknown MDP, with Algorithm 2 as the planning oracle and Algorithm 3 as the<br/>distribution estimate oracle and H&#963; as the proxy reward functional, Algorithm 1 runs in poly<br/></p>
+<p>(<br/>|S|, |A|, 1<br/></p>
+<p>1&#8722;&#947; ,<br/>1<br/>&#949;<br/></p>
+<p>)<br/>time and executes O&#771;<br/></p>
+<p>(<br/>|S|2|A|<br/>&#949;3(1&#8722;&#947;)2 + |S|3<br/></p>
+<p>&#949;6<br/></p>
+<p>)<br/>episodes of length O&#771;<br/></p>
+<p>(<br/>log |S|&#949;&#8722;1<br/></p>
+<p>log &#947;&#8722;1<br/></p>
+<p>)<br/>to guarantee that<br/></p>
+<p>H(d&#960;mix,T<br/>) &#8805; max<br/></p>
+<p>&#960;<br/>H(d&#960;)&#8722; &#949;.<br/></p>
+<p>Before we state the proof, we note the following lemmas. The first is an adaptation of the analysis of the<br/>E3 algorithm. The second is standard. We only include the second for completeness. The proofs of these<br/>may be found in the appendix.<br/></p>
+<p>Lemma 4.7. For any reward function r with &#8214;r&#8214;&#8734; &#8804; B, &#949; &gt; 0, with &#949;1 = 0.1B&#8722;1&#949;,m =<br/>32B2|S| log<br/></p>
+<p>2|S|<br/>&#948;<br/></p>
+<p>(1&#8722;&#947;)2(0.1&#949;)2 , n =<br/></p>
+<p>B log<br/>32|S|2|A| log 2|S|<br/></p>
+<p>&#948;<br/>(1&#8722;&#947;)2(0.1&#949;)2&#948;<br/></p>
+<p>0.1&#949; , t0 =<br/>log 0.1&#949;<br/></p>
+<p>log |S|<br/>log &#947; , Algorithm 4.5 guarantees with probability 1&#8722; &#948;<br/></p>
+<p>V&#960; &#8805; max<br/>&#960;<br/></p>
+<p>V&#960; &#8722; &#949;.<br/></p>
+<p>Furthermore, note that if Algorithm 4.5 is invoked T times (on possibly different reward functions), the total<br/>number of episodes sampled across all the invocations is n(T +m|S||A|) = O&#771;<br/></p>
+<p>(<br/>BT<br/>&#949; + B3|S|2|A|<br/></p>
+<p>&#949;3(1&#8722;&#947;)2<br/></p>
+<p>)<br/>, each episode<br/></p>
+<p>being of length t0.<br/></p>
+<p>Lemma 4.8. For any &#949;0, &#948; &gt; 0, when Algorithm 3 is run with m = 200<br/>&#949;20<br/></p>
+<p>log 2|S| log 0.1&#949;<br/>&#948; log &#947; , t0 = log 0.1&#949;0<br/></p>
+<p>log &#947; , d&#770;&#960;<br/>satisfies &#8214;d&#770;&#960; &#8722; d&#960;&#8214;&#8734; &#8804; &#949;0 with probability at least 1&#8722; &#948;. In this process, the algorithm samples m episodes of<br/>length t0.<br/></p>
+<p>Proof of Theorem 4.5. The claim follows immediately from the invocations of the two lemmas above with<br/>the parameter settings proposed in Theorem 4.1.<br/></p>
+<p>The following notions &amp; lemmas are helpful in proving Lemma 4.7. We shall call a state s &#8712; K m-known if,<br/>for all actions a &#8712; A, action a has been executed at state s at least m times. For any MDPM = (S,A, r, P, &#947;)<br/></p>
+<p>9</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>Algorithm 2 Sample-based planning for an unknown MDP.<br/>1: Input: Reward r, error tolerance &#949; &gt; 0, exact planning oracle tolerance &#949;1 &gt; 0, oversampling parameter<br/>m, number of rollouts n, rollout length t0.<br/></p>
+<p>2: Initialize a persistent data structure C &#8712; R|S|2&#215;|A|, which is maintained across different calls to the<br/>planning algorithm to keep transition counts, to C(s&#8242;|s, a) = 0 for every (s&#8242;, s, a) &#8712; S2 &#215;A.<br/></p>
+<p>3: repeat<br/></p>
+<p>4: Declare K = {s : mina&#8712;A<br/>&#8721;<br/>s&#8242;&#8712;S C(s&#8242;|s, a) &#8805; m}, P&#770; (s&#8242;|s, a) =<br/></p>
+<p>{<br/>C(s&#8242;|s,a)&#8721;<br/>s&#8242;&#8712;S C(s&#8242;|s,a) , if s &#8712; K<br/></p>
+<p>1s&#8242;=s. otherwise.<br/></p>
+<p>5: Define the reward function as rK(s) =<br/>{<br/>r(s), if s &#8712; K<br/>B. otherwise<br/></p>
+<p>.<br/></p>
+<p>6: Compute an (approximately) optimal policy on the MDP induced by P&#770; and reward rK. This task is<br/>purely computational, and can be done as indicated in Section 4.1.1. Also, modify the policy so that<br/>on every state s &#8712; S &#8722; K, it chooses the least performed action.<br/></p>
+<p>&#960;(s) =<br/>{<br/></p>
+<p>(&#928; (rK, &#949;1))(s) if s &#8712; K,<br/>argmina&#8712;A<br/></p>
+<p>&#8721;<br/>s&#8242;&#8712;S C(s&#8242;|s, a) otherwise<br/></p>
+<p>7: Run &#960; on the true MDP M to obtain n independently sampled t0-length trajectories (&#964;1, . . . &#964;n), and<br/>increment the corresponding counts in C(s&#8242;|s, a).<br/></p>
+<p>8: If and only if no trajectory &#964;i contains a state s &#8712; S &#8722; K, mark &#960; as stable.<br/>9: until &#960; is stable.<br/></p>
+<p>10: return &#960;.<br/></p>
+<p>Algorithm 3 Sample-based estimate of the state distribution.<br/>1: Input: A policy &#960;, termination length t0, oversampling parameter m.<br/>2: Sample m trajectories (&#964;0, . . . &#964;m&#8722;1) of length t0 following the policy &#960;.<br/>3: For every t &lt; t0, calculate the empirical state distribution d&#770;t,&#960;.<br/></p>
+<p>dt,&#960;(s) =<br/>|{i &lt; m : &#964;i = (s0, a0, . . . ) with st = s}|<br/></p>
+<p>m<br/></p>
+<p>4: return d&#770;&#960; = 1&#8722;&#947;<br/>1&#8722;&#947;t0<br/></p>
+<p>&#8721;t0&#8722;1<br/>t=0 &#947;td&#770;t,&#960;<br/></p>
+<p>and a set of m-known states K &#8838; S, define an induced MDPMK = (S,A, rK, PK, &#947;) so that the states absent<br/>from K are absorbing and maximally rewarding.<br/></p>
+<p>rK(s, a) =<br/>{<br/>r(s, a) if s &#8712; K,<br/>B otherwise,<br/></p>
+<p>(4.5)<br/></p>
+<p>PK(s&#8242;|s, a) =<br/>{<br/>P (s&#8242;|s, a) if s &#8712; K,<br/>1s&#8242;=s otherwise.<br/></p>
+<p>(4.6)<br/></p>
+<p>The state distribution induced by a policy &#960; onMK shall be denoted by dMK,&#960;. Often, in absence of an exact<br/>knowledge of the transition matrix P , the policy &#960; may be executed on an estimated transition matrix P&#770; .<br/>We shall use dM&#770;K,&#960; to denote the state distribution of the policy &#960; executed on the MDP with the transition<br/></p>
+<p>10</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>matrix P&#770; . Also, define the following.<br/></p>
+<p>PK(escape|&#960;) = E<br/>&#964;&#8764;P (&#183;|&#960;)<br/></p>
+<p>1&#8707;t&lt;t0:st 6&#8712;K,&#964;=(s0,a0,... ),<br/></p>
+<p>PK,&#947;(escape|&#960;) = (1&#8722; &#947;) E<br/>&#964;&#8764;P (&#183;|&#960;)<br/></p>
+<p>&#8734;&#8721;<br/>t=0<br/></p>
+<p>&#947;t1 su&#8712;K&#8704;u&lt;t and<br/>st 6&#8712;K,&#964;=(s0,a0,... )<br/></p>
+<p>.<br/></p>
+<p>Note that PK(escape|&#960;) &#8805; PK,&#947;(escape|&#960;)&#8722; &#947;t0 .<br/></p>
+<p>Lemma 4.9. (Lemma 8.4.4[Kak03]) For any policy &#960;, the following statements are valid.<br/></p>
+<p>&#12296;d&#960;, r&#12297; &#8805; &#12296;dMK,&#960;, rK&#12297; &#8722; PK,&#947;(escape|&#960;)&#8214;rK&#8214;&#8734;,<br/>&#12296;dMK,&#960;, rK&#12297; &#8805; &#12296;d&#960;, r&#12297;.<br/></p>
+<p>Lemma 4.10. (Lemma 8.5.4[Kak03]) If, for all (s, a) &#8712; S &#215;A, &#8214;P&#770; (&#183;|s, a)&#8722; PK(&#183;|s, a)&#8214;1 &#8804; &#949;, then for any<br/>reward r, policy &#960;, it is true that<br/></p>
+<p>|&#12296;dMK,&#960;, r&#12297; &#8722; &#12296;dM&#770;K,&#960;, r&#12297;| &#8804;<br/>&#949;<br/></p>
+<p>1&#8722; &#947;<br/>Lemma 4.11. (Folklore, eg. Lemma 8.5.5[Kak03]) When m samples {x1, . . . xm} are drawn from a distri-<br/>bution P , supported on a domain of size d, to construct an empirical distribution P&#770; (x) =<br/></p>
+<p>&#8721;m<br/>i=1 1xi=x<br/>m , it is<br/></p>
+<p>guaranteed that with probability 1&#8722; &#948;<br/></p>
+<p>&#8214;P &#8722; P&#770;&#8214;1 &#8804;<br/>&#8730;<br/></p>
+<p>8d log 2d<br/>&#948;<br/></p>
+<p>m<br/>.<br/></p>
+<p>Proof of Lemma 4.7. The key observation in dealing with an unknown MDP is: either &#960;, computed on the<br/>the transition P&#770; , is (almost) optimal for the given reward signal on the true MDP, or it escapes the set of<br/>known states K quickly. If the former occurs, the requirement on the output of the algorithm is met. In case<br/>of the later, &#960; serves as a good policy to quickly explore new states &#8211; this can happen only a finite number of<br/>times.<br/></p>
+<p>Let &#960;&#8727; = arg max&#960; V&#960;. First, note that for any &#960; chosen in the Line 6, we have<br/></p>
+<p>V&#960; =&#12296;d&#960;, r&#12297;<br/>&#8805;&#12296;dMK,&#960;, rK&#12297; &#8722; (&#947;t0 + PK(escape|&#960;))B 4.9<br/></p>
+<p>&#8805;&#12296;dM&#770;K,&#960;, rK&#12297; &#8722;<br/>1<br/></p>
+<p>1&#8722; &#947;<br/></p>
+<p>&#8730;<br/>8|S| log 2|S|<br/></p>
+<p>&#948;<br/>m<br/></p>
+<p>&#8722; (&#947;t0 + PK(escape|&#960;))B 4.10, 4.11<br/></p>
+<p>&#8805;&#12296;dM&#770;K,&#960;&#8727; , rK&#12297; &#8722; &#949;1 &#8722;<br/>1<br/></p>
+<p>1&#8722; &#947;<br/></p>
+<p>&#8730;<br/>8|S| log 2|S|<br/></p>
+<p>&#948;<br/>m<br/></p>
+<p>&#8722; (&#947;t0 + PK(escape|&#960;))B choice of &#960;<br/></p>
+<p>&#8805;&#12296;dMK,&#960;&#8727; , rK&#12297; &#8722; &#949;1 &#8722;<br/>2<br/></p>
+<p>1&#8722; &#947;<br/></p>
+<p>&#8730;<br/>8|S| log 2|S|<br/></p>
+<p>&#948;<br/>m<br/></p>
+<p>&#8722; (&#947;t0 + PK(escape|&#960;))B 4.10, 4.11<br/></p>
+<p>&#8805;V&#960;&#8727; &#8722; &#949;1 &#8722;<br/>2<br/></p>
+<p>1&#8722; &#947;<br/></p>
+<p>&#8730;<br/>8|S| log 2|S|<br/></p>
+<p>&#948;<br/>m<br/></p>
+<p>&#8722; (&#947;t0 + PK(escape|&#960;))B 4.9<br/></p>
+<p>If PK(escape|&#960;) &gt; &#8710;, then the probability that &#960; doesn&#8217;t escape K in n trials is e&#8722;n&#8710;. Accounting<br/>for the failure probabilities with a suitable union bound, Line 8 ensures that &#960; is marked stable only if<br/>PK(escape|&#960;) &#8804; log(N&#948;&#8722;1)<br/></p>
+<p>n , where N is the total number of times the inner loop is executed.<br/>To observe the truth of the second part of the claim, note that every reiteration of the inner loop coincides<br/></p>
+<p>with the exploration of some action at a m-unknown state. There can be at most m|S||A| such exploration<br/>steps. Finally, each run of the inner loop samples n episodes.<br/></p>
+<p>11</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>MountainCar Pendulum Ant<br/></p>
+<p>(a) (b) (c)<br/></p>
+<p>(d) (e)<br/>(f)<br/></p>
+<p>Figure 2: Results of the preliminary experiments. In each plot, blue represents the MaxEnt agent, and orange<br/>represents the random baseline. 2a, 2b, and 2c show the entropy of the policy evolving with the number of<br/>epochs. 2d, 2e, and 2f show the log-probability of occupancy of the two-dimensional state space. In 2f, the<br/>infinite xy grid is limited to [&#8722;20, 20]&#215; [&#8722;20, 20].<br/></p>
+<p>Proof of Lemma 4.8. First note that it suffices to ensure for all t &lt; t0 simultaneously, it happens &#8214;dt,&#960; &#8722;<br/>d&#770;t,&#960;&#8214;&#8734; &#8804; 0.1&#949;0. This is because<br/></p>
+<p>&#8214;d&#960; &#8722; d&#770;&#960;&#8214;&#8734; &#8804;<br/>1&#8722; &#947;<br/></p>
+<p>(1&#8722; &#947;t0)<br/></p>
+<p>t0&#8722;1&#8721;<br/>t=0<br/></p>
+<p>&#947;t&#8214;d&#770;t,&#960; &#8722; (1&#8722; &#947;t0)dt,&#960;&#8214;&#8734; + &#947;t0<br/></p>
+<p>&#8804; 1&#8722; &#947;<br/>(1&#8722; &#947;t0)<br/></p>
+<p>t0&#8722;1&#8721;<br/>t=0<br/></p>
+<p>&#947;t&#8214;d&#770;t,&#960; &#8722; dt,&#960;&#8214;+ 0.3&#949;0 &#8804; &#949;0.<br/></p>
+<p>Since the trajectories are independently, |d&#770;t,&#960;(s)&#8722; dt,&#960;(s)| &#8804;<br/>&#8730;<br/></p>
+<p>2<br/>m log 2<br/></p>
+<p>&#948; for each t &lt; t0 and state s &#8712; S with<br/>probability 1&#8722; &#948;, by Hoeffding&#8217;s inequality. A union bound over states and t concludes the proof.<br/></p>
+<p>5 Proof of Concept Experiments<br/>We report the results from a preliminary set of experiments2. In each case, the MaxEnt agent learns to access<br/>the set of reachable states within a small number of iterations, while monotonically increasing the entropy of<br/>the induced state distribution.<br/></p>
+<p>Recall that Algorithm 1 requires access to an approximate planning oracle and a density estimator<br/>for the induced distribution. Here the density estimator is deliberately chosen to be simple &#8211; a count-<br/>based estimate over the discretized state space. It is possible to use neural density estimators and other<br/>function-approximation based estimators in its stead.<br/></p>
+<p>2The open-source implementations may be found at https://github.com/abbyvansoest/maxent_base and https://github.<br/>com/abbyvansoest/maxent_ant.<br/></p>
+<p>12</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>Figure 3: The number of distinct xy states visited by Ant at various epochs. Results were averaged over<br/>N = 20 executions. As the number of policies in the mixture increases, the agent reaches more unique states<br/>in the same amount of time.<br/></p>
+<p>5.1 Environments and the discretization procedure<br/>The 2-dimensional state spaces for MountainCar and Pendulum (from [BCP+16]) were discretized evenly to<br/>grids of size 10&#215; 9 and 8&#215; 8, respectively. For Pendulum, the maximum torque and velocity were capped at<br/>1.0 and 7.0, respectively.<br/></p>
+<p>The 29-dimensional state space for Ant (with a Mujoco engine) was first reduced to dimension 7, combining<br/>the agent&#8217;s x and y location in the gridspace with a 5-dimensional random projection of the remaining 27<br/>states. The x and y dimensions were discretized into 16 bins in the range [&#8722;12, 12]. The other dimensions<br/>were each normalized and discretized into 15 bins in the range [&#8722;1, 1]. While the planning agent agent had<br/>access to the full state representation, the density estimation was performed exclusively on the reduced<br/>representation.<br/></p>
+<p>5.2 Algorithmic details<br/>Reward function. Each planning agent was trained to maximize a KL divergence objective function, ie.<br/>KL(Unif||d&#960;).<br/></p>
+<p>MountainCar and Pendulum. The planning oracle is a REINFORCE [SMSM00] agent, where the the<br/>output policy from the previous iteration is used as the initial policy for the next iteration. The policy class is<br/>a neural net with a single hidden layer consisting of 128 units. The agent is trained on 400 and 200 episodes<br/>every epoch for MountainCar and Pendulum, respectively. The baseline agent chooses its action randomly at<br/>every time step.<br/></p>
+<p>Ant. The planning oracle is a Soft Actor-Critic [HZAL18] agent. The policy class is a neural net with 2<br/>hidden layers composed of 300 units and the ReLU activation function. The agent is trained for 30 episodes,<br/>each of which consists of a roll-out of 5000 steps. The mixed policy is executed over 10 trials of T = 10000<br/>steps at the end of each epoch in order to approximate the policy distribution and compute the next reward<br/>function. The baseline agent chooses its actions randomly for the same number of trials and steps.<br/></p>
+<p>Acknowledgements<br/>Sham Kakade acknowledges funding from the Washington Research Foundation for Innovation in Data-<br/>intensive Discovery, the DARPA award FA8650-18-2-7836, and the ONR award N00014-18-1-2247. The<br/>authors thank Shie Mannor for helpful discussions.<br/></p>
+<p>13</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>References<br/>[AN04] Pieter Abbeel and Andrew Y. Ng. Apprenticeship learning via inverse reinforcement learning.<br/></p>
+<p>In ICML, 2004.<br/></p>
+<p>[AOM17] Mohammad Gheshlaghi Azar, Ian Osband, and Re&#769;mi Munos. Minimax regret bounds for<br/>reinforcement learning. arXiv preprint arXiv:1703.05449, 2017.<br/></p>
+<p>[B+15] Se&#769;bastien Bubeck et al. Convex optimization: Algorithms and complexity. Foundations and<br/>Trends in Machine Learning, 8(3-4):231&#8211;357, 2015.<br/></p>
+<p>[BCP+16] Greg Brockman, Vicki Cheung, Ludwig Pettersson, Jonas Schneider, John Schulman, Jie Tang,<br/>and Wojciech Zaremba. Openai gym. arXiv preprint arXiv:1606.01540, 2016.<br/></p>
+<p>[BEP+18] Yuri Burda, Harri Edwards, Deepak Pathak, Amos Storkey, Trevor Darrell, and Alexei A.<br/>Efros. Large-scale study of curiosity-driven learning. In arXiv:1808.04355, 2018.<br/></p>
+<p>[Ber05] Dimitri P Bertsekas. Dynamic programming and optimal control, volume 1. Athena Scientific,<br/>2005.<br/></p>
+<p>[BESK18] Yuri Burda, Harrison Edwards, Amos Storkey, and Oleg Klimov. Exploration by random<br/>network distillation. arXiv preprint arXiv:1810.12894, 2018.<br/></p>
+<p>[BSO+16] Marc G. Bellemare, Sriram Srinivasan, Georg Ostrovski, Tom Schaul, David Saxton, and Re&#769;mi<br/>Munos. Unifying count-based exploration and intrinsic motivation. In Advances in Neural<br/>Information Processing Systems 29: Annual Conference on Neural Information Processing<br/>Systems 2016, December 5-10, 2016, Barcelona, Spain, pages 1471&#8211;1479, 2016.<br/></p>
+<p>[CBS05] Nuttapong Chentanez, Andrew G. Barto, and Satinder P. Singh. Intrinsically motivated<br/>reinforcement learning. In L. K. Saul, Y. Weiss, and L. Bottou, editors, Advances in Neural<br/>Information Processing Systems 17, pages 1281&#8211;1288. MIT Press, 2005.<br/></p>
+<p>[DB15] Christoph Dann and Emma Brunskill. Sample complexity of episodic fixed-horizon reinforce-<br/>ment learning. In Advances in Neural Information Processing Systems, pages 2818&#8211;2826,<br/>2015.<br/></p>
+<p>[DFVR03] Daniela Pucci De Farias and Benjamin Van Roy. The linear programming approach to<br/>approximate dynamic programming. Operations research, 51(6):850&#8211;865, 2003.<br/></p>
+<p>[FCRL17] Justin Fu, John Co-Reyes, and Sergey Levine. Ex2: Exploration with exemplar models for<br/>deep reinforcement learning. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus,<br/>S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems<br/>30, pages 2577&#8211;2587. Curran Associates, Inc., 2017.<br/></p>
+<p>[FGKM18] Maryam Fazel, Rong Ge, Sham Kakade, and Mehran Mesbahi. Global convergence of policy<br/>gradient methods for the linear quadratic regulator. In International Conference on Machine<br/>Learning, pages 1466&#8211;1475, 2018.<br/></p>
+<p>[FW56] Marguerite Frank and Philip Wolfe. An algorithm for quadratic programming. Naval Research<br/>Logistics (NRL), 3(1-2):95&#8211;110, 1956.<br/></p>
+<p>[HCC+16] Rein Houthooft, Xi Chen, Xi Chen, Yan Duan, John Schulman, Filip De Turck, and Pieter<br/>Abbeel. Vime: Variational information maximizing exploration. In D. D. Lee, M. Sugiyama,<br/>U. V. Luxburg, I. Guyon, and R. Garnett, editors, Advances in Neural Information Processing<br/>Systems 29, pages 1109&#8211;1117. Curran Associates, Inc., 2016.<br/></p>
+<p>14</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>[HZAL18] Tuomas Haarnoja, Aurick Zhou, Pieter Abbeel, and Sergey Levine. Soft actor-critic: Off-policy<br/>maximum entropy deep reinforcement learning with a stochastic actor. CoRR, abs/1801.01290,<br/>2018.<br/></p>
+<p>[Kae93] Leslie Pack Kaelbling. Learning to achieve goals. In Proceedings of the Thirteenth International<br/>Joint Conference on Artificial Intelligence, Chambery, France, 1993. Morgan Kaufmann.<br/></p>
+<p>[Kak03] Sham Machandranath Kakade. On the sample complexity of reinforcement learning. PhD<br/>thesis, University of London London, England, 2003.<br/></p>
+<p>[KS02] Michael Kearns and Satinder Singh. Near-optimal reinforcement learning in polynomial time.<br/>Machine learning, 49(2-3):209&#8211;232, 2002.<br/></p>
+<p>[LH14] Tor Lattimore and Marcus Hutter. Near-optimal pac bounds for discounted mdps. Theoretical<br/>Computer Science, 558:125&#8211;143, 2014.<br/></p>
+<p>[LLTyO12] Manuel Lopes, Tobias Lang, Marc Toussaint, and Pierre yves Oudeyer. Exploration in model-<br/>based reinforcement learning by empirically estimating learning progress. In F. Pereira, C. J. C.<br/>Burges, L. Bottou, and K. Q. Weinberger, editors, Advances in Neural Information Processing<br/>Systems 25, pages 206&#8211;214. Curran Associates, Inc., 2012.<br/></p>
+<p>[MJR15] Shakir Mohamed and Danilo Jimenez Rezende. Variational information maximisation for<br/>intrinsically motivated reinforcement learning. In C. Cortes, N. D. Lawrence, D. D. Lee,<br/>M. Sugiyama, and R. Garnett, editors, Advances in Neural Information Processing Systems 28,<br/>pages 2125&#8211;2133. Curran Associates, Inc., 2015.<br/></p>
+<p>[MKS+15] Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A Rusu, Joel Veness, Marc G<br/>Bellemare, Alex Graves, Martin Riedmiller, Andreas K Fidjeland, Georg Ostrovski, et al.<br/>Human-level control through deep reinforcement learning. Nature, 518(7540):529, 2015.<br/></p>
+<p>[NHR99] Andrew Y. Ng, Daishi Harada, and Stuart J. Russell. Policy invariance under reward transfor-<br/>mations: Theory and application to reward shaping. In ICML, 1999.<br/></p>
+<p>[NPD+18] Ashvin Nair, Vitchyr Pong, Murtaza Dalal, Shikhar Bahl, Steven Lin, and Sergey Levine.<br/>Visual reinforcement learning with imagined goals. CoRR, abs/1807.04742, 2018.<br/></p>
+<p>[OAC18] Ian Osband, John Aslanides, and Albin Cassirer. Randomized prior functions for deep<br/>reinforcement learning. In S. Bengio, H. Wallach, H. Larochelle, K. Grauman, N. Cesa-<br/>Bianchi, and R. Garnett, editors, Advances in Neural Information Processing Systems 31,<br/>pages 8625&#8211;8637. Curran Associates, Inc., 2018.<br/></p>
+<p>[OBPVR16] Ian Osband, Charles Blundell, Alexander Pritzel, and Benjamin Van Roy. Deep exploration<br/>via bootstrapped dqn. In D. D. Lee, M. Sugiyama, U. V. Luxburg, I. Guyon, and R. Garnett,<br/>editors, Advances in Neural Information Processing Systems 29, pages 4026&#8211;4034. Curran<br/>Associates, Inc., 2016.<br/></p>
+<p>[OBvdOM17] Georg Ostrovski, Marc G. Bellemare, Aa&#776;ron van den Oord, and Re&#769;mi Munos. Count-based<br/>exploration with neural density models. In Proceedings of the 34th International Conference on<br/>Machine Learning, ICML 2017, Sydney, NSW, Australia, 6-11 August 2017, pages 2721&#8211;2730,<br/>2017.<br/></p>
+<p>[PAED17] Deepak Pathak, Pulkit Agrawal, Alexei A. Efros, and Trevor Darrell. Curiosity-driven explo-<br/>ration by self-supervised prediction. In ICML, 2017.<br/></p>
+<p>[Put14] Martin L Puterman. Markov decision processes: discrete stochastic dynamic programming.<br/>John Wiley &amp; Sons, 2014.<br/></p>
+<p>15</p>
+
+</div></div>
+<div style="page-break-before:always; page-break-after:always"><div><p>[RGB11] Ste&#769;phane Ross, Geoffrey J. Gordon, and J. Andrew Bagnell. A reduction of imitation learning<br/>and structured prediction to no-regret online learning. In AISTATS, 2011.<br/></p>
+<p>[SHM+16] David Silver, Aja Huang, Chris J Maddison, Arthur Guez, Laurent Sifre, George Van Den Driess-<br/>che, Julian Schrittwieser, Ioannis Antonoglou, Veda Panneershelvam, Marc Lanctot, et al.<br/>Mastering the game of go with deep neural networks and tree search. nature, 529(7587):484,<br/>2016.<br/></p>
+<p>[SLB09] Satinder Singh, Richard L. Lewis, and Andrew G. Barto. Where do rewards come from?<br/>Proceedings of the Annual Conference of the Cognitive Science Society (CogSci), 2009.<br/></p>
+<p>[SLBS10] Satinder P. Singh, Richard L. Lewis, Andrew G. Barto, and Jonathan Sorg. Intrinsically moti-<br/>vated reinforcement learning: An evolutionary perspective. IEEE Transactions on Autonomous<br/>Mental Development, 2:70&#8211;82, 2010.<br/></p>
+<p>[SLW+06] Alexander L Strehl, Lihong Li, Eric Wiewiora, John Langford, and Michael L Littman. Pac<br/>model-free reinforcement learning. In Proceedings of the 23rd international conference on<br/>Machine learning, pages 881&#8211;888. ACM, 2006.<br/></p>
+<p>[SMSM00] Richard S Sutton, David A McAllester, Satinder P Singh, and Yishay Mansour. Policy gradient<br/>methods for reinforcement learning with function approximation. In Advances in neural<br/>information processing systems, pages 1057&#8211;1063, 2000.<br/></p>
+<p>[SRM+18] Nikolay Savinov, Anton Raichuk, Raphae&#776;l Marinier, Damien Vincent, Marc Pollefeys, Tim-<br/>othy P. Lillicrap, and Sylvain Gelly. Episodic curiosity through reachability. CoRR,<br/>abs/1810.02274, 2018.<br/></p>
+<p>[SS10] Istva&#769;n Szita and Csaba Szepesva&#769;ri. Model-based reinforcement learning with nearly tight<br/>exploration complexity bounds. In Proceedings of the 27th International Conference on Machine<br/>Learning (ICML-10), pages 1031&#8211;1038, 2010.<br/></p>
+<p>[THF+17] Haoran Tang, Rein Houthooft, Davis Foote, Adam Stooke, OpenAI Xi Chen, Yan Duan, John<br/>Schulman, Filip DeTurck, and Pieter Abbeel. #exploration: A study of count-based exploration<br/>for deep reinforcement learning. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus,<br/>S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems<br/>30, pages 2753&#8211;2762. Curran Associates, Inc., 2017.<br/></p>
+<p>[WdWK+18] David Warde-Farley, Tom Van de Wiele, Tejas Kulkarni, Catalin Ionescu, Steven Hansen, and<br/>Volodymyr Mnih. Unsupervised control through non-parametric discriminative rewards. CoRR,<br/>abs/1811.11359, 2018.<br/></p>
+<p>[WRR+17] The&#769;ophane Weber, Se&#769;bastien Racanie&#768;re, David P Reichert, Lars Buesing, Arthur Guez,<br/>Danilo Jimenez Rezende, Adria Puigdomenech Badia, Oriol Vinyals, Nicolas Heess, Yujia<br/>Li, et al. Imagination-augmented agents for deep reinforcement learning. arXiv preprint<br/>arXiv:1707.06203, 2017.<br/></p>
+<p>[ZOS18] Zeyu Zheng, Junhyuk Oh, and Satinder Singh. On learning intrinsic rewards for policy gradient<br/>methods. CoRR, abs/1804.06459, 2018.<br/></p>
+<p>16</p>
+
+</div></div>
+</body></html>
