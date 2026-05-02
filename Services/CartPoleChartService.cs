@@ -29,11 +29,30 @@ namespace MyMaxEntV01.Services
         public string GenerateTrainingChart(
             List<double> episodeRewards, 
             List<int> episodeSteps, 
-            List<double> episodeEntropies)
+            List<double> episodeEntropies,
+            out string timestamp)
+        {
+            return GenerateTrainingChart(episodeRewards, episodeSteps, episodeEntropies, out timestamp, "cartpole");
+        }
+
+        /// <summary>
+        /// Generate a training chart with episode rewards, steps, and entropy
+        /// </summary>
+        /// <param name="episodeRewards">List of rewards per episode</param>
+        /// <param name="episodeSteps">List of steps per episode</param>
+        /// <param name="episodeEntropies">List of entropy values per episode</param>
+        /// <param name="experimentName">Name of the experiment for the filename suffix</param>
+        /// <returns>Full path to the saved PNG file</returns>
+        public string GenerateTrainingChart(
+            List<double> episodeRewards, 
+            List<int> episodeSteps, 
+            List<double> episodeEntropies,
+            out string timestamp,
+            string experimentName)
         {
             // Create timestamp-based filename
-            string timestamp = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss-fffff");
-            string filename = $"{timestamp}-cartpole.png";
+            timestamp = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss-fffff");
+            string filename = $"{timestamp}-maxent-{experimentName}.png";
             string fullPath = Path.Combine(OutputFolder, filename);
 
             // Prepare episode numbers for x-axis
@@ -254,6 +273,56 @@ namespace MyMaxEntV01.Services
             if (!Directory.Exists(OutputFolder))
             {
                 Directory.CreateDirectory(OutputFolder);
+            }
+        }
+
+        /// <summary>
+        /// Save log content to a file with the same timestamp format as charts
+        /// </summary>
+        /// <param name="logContent">The log content to save</param>
+        /// <param name="timestamp">Optional timestamp to use (if null, generates new timestamp)</param>
+        /// <returns>Full path to the saved log file</returns>
+        public string SaveLog(string logContent, string? timestamp = null)
+        {
+            EnsureOutputFolderExists();
+
+            // Use provided timestamp or create new one
+            if (string.IsNullOrEmpty(timestamp))
+            {
+                timestamp = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss-fffff");
+            }
+
+            string filename = $"{timestamp}-cartpole.log";
+            string fullPath = Path.Combine(OutputFolder, filename);
+
+            File.WriteAllText(fullPath, logContent);
+
+            return fullPath;
+        }
+
+        /// <summary>
+        /// Open the log file in default text editor
+        /// </summary>
+        public void OpenLogInViewer(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException($"Log file not found: {filePath}");
+            }
+
+            try
+            {
+                // Use Windows shell to open with default text editor
+                var psi = new ProcessStartInfo
+                {
+                    FileName = filePath,
+                    UseShellExecute = true
+                };
+                Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to open log in viewer: {ex.Message}", ex);
             }
         }
 

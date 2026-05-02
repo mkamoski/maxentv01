@@ -1,11 +1,11 @@
-@page "/cartpole"
+@page "/antmaxent"
 @using MyMaxEntV01.Models
 @using MyMaxEntV01.Services
 @inject CartPoleChartService ChartService
 
-<PageTitle>CartPole - MaxEnt</PageTitle>
+<PageTitle>Ant MaxEnt - MaxEnt</PageTitle>
 
-<h1>CartPole with Maximum Entropy Reinforcement Learning</h1>
+<h1>Ant MaxEnt with Maximum Entropy Reinforcement Learning</h1>
 
 <div class="mb-3">
     <button class="btn btn-primary me-2" @onclick="Reset" disabled="@isRunning">Reset</button>
@@ -25,11 +25,15 @@
         </div>
         <div class="mb-2">
             <label>Max Steps per Episode: @maxSteps</label>
-            <input type="range" class="form-range" min="50" max="500" step="50" @bind="maxSteps" disabled="@isRunning" />
+            <input type="range" class="form-range" min="100" max="1000" step="50" @bind="maxSteps" disabled="@isRunning" />
         </div>
         <div class="mb-2">
             <label>Learning Rate: @learningRate.ToString("F4")</label>
             <input type="range" class="form-range" min="0.0001" max="0.1" step="0.0001" @bind="learningRate" disabled="@isRunning" />
+        </div>
+        <div class="mb-2">
+            <label>Temperature: @temperature.ToString("F2")</label>
+            <input type="range" class="form-range" min="0.1" max="5.0" step="0.1" @bind="temperature" disabled="@isRunning" />
         </div>
     </div>
     <div class="col-md-6">
@@ -48,12 +52,24 @@
                 <td>@totalReward.ToString("F2")</td>
             </tr>
             <tr>
-                <td>Cart Position:</td>
-                <td>@cartPoleEnv?.CartPosition.ToString("F3")</td>
+                <td>Position X:</td>
+                <td>@antEnv?.PositionX.ToString("F3") m</td>
             </tr>
             <tr>
-                <td>Pole Angle:</td>
-                <td>@cartPoleEnv?.PoleAngle.ToString("F3") rad</td>
+                <td>Height (Z):</td>
+                <td>@antEnv?.PositionZ.ToString("F3") m</td>
+            </tr>
+            <tr>
+                <td>Velocity X:</td>
+                <td>@antEnv?.VelocityX.ToString("F3") m/s</td>
+            </tr>
+            <tr>
+                <td>Roll:</td>
+                <td>@antEnv?.Roll.ToString("F3") rad</td>
+            </tr>
+            <tr>
+                <td>Pitch:</td>
+                <td>@antEnv?.Pitch.ToString("F3") rad</td>
             </tr>
         </table>
     </div>
@@ -80,12 +96,13 @@
 </style>
 
 @code {
-    private CartPoleEnvironment? cartPoleEnv;
+    private AntMaxEntEnvironment? antEnv;
     private MaxEntAgent? agent;
 
     private int episodes = 10;
-    private int maxSteps = 200;
-    private double learningRate = 0.01;
+    private int maxSteps = 500;
+    private double learningRate = 0.001;
+    private double temperature = 1.0;
 
     private int currentEpisode = 0;
     private int currentStep = 0;
@@ -112,8 +129,8 @@
 
     private void Reset()
     {
-        cartPoleEnv = new CartPoleEnvironment();
-        agent = new MaxEntAgent(stateSize: 4, actionSize: 2, learningRate: learningRate);
+        antEnv = new AntMaxEntEnvironment();
+        agent = new MaxEntAgent(stateSize: 27, actionSize: 8, learningRate: learningRate, temperature: temperature);
 
         currentEpisode = 0;
         currentStep = 0;
@@ -126,9 +143,10 @@
         lastLogPath = string.Empty;
 
         outputLogBuilder.Clear();
-        AppendLog("CartPole environment initialized.");
-        AppendLog($"State space: 4 dimensions [cart_pos, cart_vel, pole_angle, pole_vel]");
-        AppendLog($"Action space: 2 actions [left, right]");
+        AppendLog("Ant MaxEnt environment initialized.");
+        AppendLog($"State space: 27 dimensions [position, velocity, orientation, angular_vel, joint_angles, joint_vels]");
+        AppendLog($"Action space: 8 continuous actions (joint torques)");
+        AppendLog($"Goal: Learn coordinated quadruped locomotion");
         AppendLog("Ready to run MaxEnt training...\n");
 
         StateHasChanged();
@@ -141,12 +159,16 @@
         isRunning = true;
         cancellationTokenSource = new CancellationTokenSource();
 
+        // Update agent parameters
+        agent = new MaxEntAgent(stateSize: 27, actionSize: 8, learningRate: learningRate, temperature: temperature);
+
         // Clear previous training history
         episodeRewards.Clear();
         episodeSteps.Clear();
         episodeEntropies.Clear();
 
-        AppendLog($"Starting MaxEnt training for {episodes} episodes...\n");
+        AppendLog($"Starting MaxEnt training for {episodes} episodes...");
+        AppendLog($"Learning rate: {learningRate:F4}, Temperature: {temperature:F2}\n");
 
         try
         {
@@ -155,7 +177,7 @@
                 if (cancellationTokenSource.Token.IsCancellationRequested)
                     break;
 
-                var state = cartPoleEnv!.Reset();
+                var state = antEnv!.Reset();
                 double episodeReward = 0;
 
                 for (currentStep = 0; currentStep < maxSteps; currentStep++)
@@ -163,14 +185,22 @@
                     if (cancellationTokenSource.Token.IsCancellationRequested)
                         break;
 
-                    // Agent selects action using MaxEnt policy
-                    int action = agent!.SelectAction(state);
+                    // Agent selects continuous actions for all 8 joints using MaxEnt policy
+                    double[] actions = new double[8];
+                    for (int i = 0; i < 8; i++)
+                    {
+                        // Sample action for each joint (discrete selection mapped to continuous)
+                        int discreteAction = agent!.SelectAction(state);
+                        // Map to continuous range [-1, 1]
+                        actions[i] = (discreteAction == 0) ? -0.5 : 0.5;
+                    }
 
                     // Environment step
-                    var (nextState, reward, done) = cartPoleEnv.Step(action);
+                    var (nextState, reward, done) = antEnv.Step(actions);
 
-                    // Agent learns using MaxEnt update
-                    agent.Learn(state, action, reward, nextState, done);
+                    // Agent learns using MaxEnt update (using first action for simplicity)
+                    int learnAction = actions[0] > 0 ? 1 : 0;
+                    agent.Learn(state, learnAction, reward, nextState, done);
 
                     episodeReward += reward;
                     totalReward += reward;
@@ -180,7 +210,7 @@
                         break;
 
                     // Update UI periodically
-                    if (currentStep % 10 == 0)
+                    if (currentStep % 20 == 0)
                     {
                         StateHasChanged();
                         await Task.Delay(1);
@@ -192,7 +222,8 @@
                 episodeSteps.Add(currentStep + 1);
                 episodeEntropies.Add(agent!.GetEntropy());
 
-                AppendLog($"Episode {currentEpisode}/{episodes} - Steps: {currentStep + 1}, Reward: {episodeReward:F2}, Entropy: {agent!.GetEntropy():F4}");
+                double distanceTraveled = antEnv.PositionX;
+                AppendLog($"Episode {currentEpisode}/{episodes} - Steps: {currentStep + 1}, Reward: {episodeReward:F2}, Distance: {distanceTraveled:F2}m, Entropy: {agent!.GetEntropy():F4}");
 
                 StateHasChanged();
                 await Task.Delay(10);
@@ -210,7 +241,7 @@
                 try
                 {
                     string timestamp;
-                    lastChartPath = ChartService.GenerateTrainingChart(episodeRewards, episodeSteps, episodeEntropies, out timestamp);
+                    lastChartPath = ChartService.GenerateTrainingChart(episodeRewards, episodeSteps, episodeEntropies, out timestamp, "ant");
                     AppendLog($"Chart saved to: {lastChartPath}");
                     AppendLog("Click 'View Graph' to open the chart.");
 
