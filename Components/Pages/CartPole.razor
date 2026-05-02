@@ -3,7 +3,7 @@
 @using MyMaxEntV01.Services
 @inject CartPoleChartService ChartService
 
-<PageTitle>CartPole - MaxEnt</PageTitle>
+<PageTitle>CartPole</PageTitle>
 
 <h1>CartPole with Maximum Entropy Reinforcement Learning</h1>
 
@@ -211,13 +211,13 @@
                 {
                     string timestamp;
                     lastChartPath = ChartService.GenerateTrainingChart(episodeRewards, episodeSteps, episodeEntropies, out timestamp);
-                    AppendLog($"Chart saved to: {lastChartPath}");
+                    AppendLog($"Chart saved to: {Path.GetFullPath(lastChartPath)}");
                     AppendLog("Click 'View Graph' to open the chart.");
 
                     // Save log file with same timestamp
                     AppendLog("\nSaving log file...");
                     lastLogPath = ChartService.SaveLog(outputLog, timestamp);
-                    AppendLog($"Log saved to: {lastLogPath}");
+                    AppendLog($"Log saved to: {Path.GetFullPath(lastLogPath)}");
                     AppendLog("Click 'Open Log' to view the log file.");
                 }
                 catch (Exception ex)
