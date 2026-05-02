@@ -1,0 +1,208 @@
+@page "/paper"
+@inject IJSRuntime JS
+
+<PageTitle>Original Paper - MaxEnt</PageTitle>
+
+<div class="paper-page">
+    <div class="paper-header">
+        <div>
+            <h2 class="paper-title">Provably Efficient Maximum Entropy Exploration</h2>
+            <p class="paper-subtitle">Hazan et al. (2019) &mdash; <em>arXiv:1812.02690v2</em></p>
+        </div>
+        <div class="paper-actions">
+            <button class="btn-action" @onclick="OpenInExternalViewer" title="Open in OS PDF viewer">
+                <span class="bi bi-box-arrow-up-right"></span> Open in PDF viewer
+            </button>
+        </div>
+    </div>
+
+    @if (_loadError is not null)
+    {
+        <div class="load-error">
+            <strong>Could not load PDF:</strong> @_loadError
+            <br />
+            <small>Use the "Open in PDF viewer" button above to view the paper externally.</small>
+        </div>
+    }
+
+    <div class="pdf-frame-wrapper">
+        @if (_blobUrl is not null)
+        {
+            <iframe id="pdf-frame" src="@_blobUrl" class="pdf-frame" title="MaxEnt Paper PDF"></iframe>
+        }
+        else if (_loadError is null)
+        {
+            <div class="pdf-loading">
+                <div class="spinner"></div>
+                <span>Loading PDF…</span>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .paper-page {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 2rem);
+        padding: 0.75rem 1rem 0;
+        box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .paper-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .paper-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #24292e;
+    }
+
+    .paper-subtitle {
+        margin: 0.2rem 0 0;
+        font-size: 0.85rem;
+        color: #6a737d;
+    }
+
+    .paper-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.9rem;
+        border: 1px solid #0366d6;
+        border-radius: 6px;
+        background: #fff;
+        color: #0366d6;
+        font-size: 0.85rem;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-action:hover {
+        background: #0366d6;
+        color: #fff;
+    }
+
+    .pdf-frame-wrapper {
+        flex: 1;
+        border: 1px solid #e1e4e8;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #525659;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pdf-frame {
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+    }
+
+    .pdf-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        color: #fff;
+        font-size: 0.95rem;
+    }
+
+    .spinner {
+        width: 36px;
+        height: 36px;
+        border: 4px solid rgba(255,255,255,0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .load-error {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 6px;
+        padding: 0.6rem 1rem;
+        margin-bottom: 0.6rem;
+        font-size: 0.875rem;
+        color: #856404;
+    }
+</style>
+
+@code {
+    private string? _blobUrl;
+    private string? _loadError;
+    private string? _tempPdfPath;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            using var stream = await FileSystem.OpenAppPackageFileAsync("maxent_paper.pdf");
+
+            // Read all bytes
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            // Write to temp file so the OS viewer can open it
+            _tempPdfPath = Path.Combine(FileSystem.CacheDirectory, "maxent_paper.pdf");
+            await File.WriteAllBytesAsync(_tempPdfPath, bytes);
+
+            // Create a blob URL for the inline iframe via JS
+            _blobUrl = await JS.InvokeAsync<string>("pdfViewer.createBlobUrl", bytes);
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OpenInExternalViewer()
+    {
+        try
+        {
+            if (_tempPdfPath is not null && File.Exists(_tempPdfPath))
+            {
+                await Launcher.OpenAsync(new OpenFileRequest
+                {
+                    File = new ReadOnlyFile(_tempPdfPath)
+                });
+            }
+            else
+            {
+                _loadError = "PDF not yet loaded; please wait a moment and try again.";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Could not open PDF: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+}

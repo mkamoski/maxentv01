@@ -430,3 +430,6 @@ FodyWeavers.xsd
 
 # CartPole output charts
 output/
+
+# LibreOffice/OpenOffice lock files (global - matches anywhere in repo)
+**/.~lock.*

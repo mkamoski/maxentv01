@@ -284,7 +284,7 @@ namespace MyMaxEntV01.Services
         /// <param name="logContent">The log content to save</param>
         /// <param name="timestamp">Optional timestamp to use (if null, generates new timestamp)</param>
         /// <returns>Full path to the saved log file</returns>
-        public string SaveLog(string logContent, string? timestamp = null)
+        public string SaveLog(string logContent, string? timestamp = null, string experimentName = "cartpole")
         {
             EnsureOutputFolderExists();
 
@@ -294,7 +294,7 @@ namespace MyMaxEntV01.Services
                 timestamp = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss-fffff");
             }
 
-            string filename = $"{timestamp}-cartpole.log";
+            string filename = $"{timestamp}-{experimentName}.log";
             string fullPath = Path.Combine(OutputFolder, filename);
 
             File.WriteAllText(fullPath, logContent);
