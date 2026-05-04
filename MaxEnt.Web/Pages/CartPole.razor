@@ -1,0 +1,95 @@
+@page "/cartpole"
+@using MaxEnt.Logic
+
+<PageTitle>CartPole</PageTitle>
+
+<h1>CartPole - Maximum Entropy RL</h1>
+
+<div>
+    <button @onclick="Reset" disabled="@isRunning">Reset</button>
+    <button @onclick="Run" disabled="@isRunning">Run</button>
+    <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
+</div>
+
+<pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@outputLog</pre>
+
+@code {
+    private bool isRunning;
+    private string outputLog = "";
+    private System.Text.StringBuilder logBuilder = new();
+    private CancellationTokenSource? cts;
+
+    private CartPoleEnvironment? env;
+    private MaxEntAgent? agent;
+
+    private void Reset()
+    {
+        env = new CartPoleEnvironment();
+        agent = new MaxEntAgent(stateSize: 4, actionSize: 2);
+        logBuilder.Clear();
+        outputLog = "";
+        Log("Ready. Press Run to start training.");
+    }
+
+    private async Task Run()
+    {
+        if (isRunning) return;
+        isRunning = true;
+        cts = new CancellationTokenSource();
+
+        try
+        {
+            env ??= new CartPoleEnvironment();
+            agent ??= new MaxEntAgent(stateSize: 4, actionSize: 2);
+
+            int episodes = 200;
+            for (int ep = 1; ep <= episodes && !cts.Token.IsCancellationRequested; ep++)
+            {
+                double[] state = env.Reset();
+                double totalReward = 0;
+                bool done = false;
+                int steps = 0;
+
+                while (!done && steps < 500)
+                {
+                    int action = agent.SelectAction(state);
+                    var (nextState, reward, isDone) = env.Step(action);
+                    agent.Learn(state, action, reward, nextState, isDone);
+                    state = nextState;
+                    totalReward += reward;
+                    done = isDone;
+                    steps++;
+                }
+
+                Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F1}, Entropy: {agent.GetEntropy():F4}");
+
+                if (ep % 10 == 0)
+                {
+                    StateHasChanged();
+                    await Task.Delay(1, cts.Token);
+                }
+            }
+
+            Log("Training complete.");
+        }
+        catch (OperationCanceledException)
+        {
+            Log("Stopped.");
+        }
+        finally
+        {
+            isRunning = false;
+            cts?.Dispose();
+            cts = null;
+            StateHasChanged();
+        }
+    }
+
+    private void Stop() => cts?.Cancel();
+
+    private void Log(string msg)
+    {
+        logBuilder.AppendLine(msg);
+        outputLog = logBuilder.ToString();
+    }
+}

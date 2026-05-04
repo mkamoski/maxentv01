@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="MyMaxEntV01.csproj" />
+  <Project Path="MaxEnt.Logic\MaxEnt.Logic.csproj" />
+  <Project Path="MaxEnt.Web\MaxEnt.Web.csproj" />
 </Solution>

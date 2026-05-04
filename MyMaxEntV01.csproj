@@ -71,6 +71,36 @@
 		<MauiAsset Include="maxent-original-paper-1812.02690v2.pdf" LogicalName="maxent_paper.pdf" />
 	</ItemGroup>
 
+    <ItemGroup>
+      <None Include="MaxEnt.Logic\MaxEnt.Logic.csproj" />
+      <None Include="MaxEnt.Web\MaxEnt.Web.csproj" />
+      <None Include="MaxEnt.Web\MaxEnt.Web.csproj.user" />
+    </ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="MaxEnt.Logic\MaxEnt.Logic.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Remove="Models\**" />
+		<None Remove="Models\**" />
+		<Compile Remove="MaxEnt.Logic\**" />
+		<Content Remove="MaxEnt.Logic\**" />
+		<None Remove="MaxEnt.Logic\**" />
+		<EmbeddedResource Remove="MaxEnt.Logic\**" />
+		<Compile Remove="MaxEnt.Web\**" />
+		<Content Remove="MaxEnt.Web\**" />
+		<None Remove="MaxEnt.Web\**" />
+		<EmbeddedResource Remove="MaxEnt.Web\**" />
+		<RazorComponent Remove="MaxEnt.Web\**" />
+		<AdditionalFiles Remove="MaxEnt.Web\**" />
+		<Razor Remove="MaxEnt.Web\**" />
+		<Compile Remove="MaxEnt.Shared\**" />
+		<Content Remove="MaxEnt.Shared\**" />
+		<None Remove="MaxEnt.Shared\**" />
+		<EmbeddedResource Remove="MaxEnt.Shared\**" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="BepuPhysics" Version="2.5.0-beta.29" />
 		<!--<PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-preview.3.26203.7" />-->
