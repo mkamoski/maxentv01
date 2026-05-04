@@ -102,6 +102,23 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Compile Remove="MaxEnt.Shared\**" />
+		<Compile Remove="MaxEnt.Web\**" />
+		<Content Remove="MaxEnt.Shared\**" />
+		<Content Remove="MaxEnt.Web\**" />
+		<None Remove="MaxEnt.Shared\**" />
+		<None Remove="MaxEnt.Web\**" />
+		<EmbeddedResource Remove="MaxEnt.Shared\**" />
+		<EmbeddedResource Remove="MaxEnt.Web\**" />
+		<RazorComponent Remove="MaxEnt.Shared\**" />
+		<RazorComponent Remove="MaxEnt.Web\**" />
+		<AdditionalFiles Remove="MaxEnt.Shared\**" />
+		<AdditionalFiles Remove="MaxEnt.Web\**" />
+		<Razor Remove="MaxEnt.Shared\**" />
+		<Razor Remove="MaxEnt.Web\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="BepuPhysics" Version="2.5.0-beta.29" />
 		<!--<PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-preview.3.26203.7" />-->
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />

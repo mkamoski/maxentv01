@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="MaxEnt.Shared/MaxEnt.Shared.csproj" Id="6ac43a32-c6da-46d0-b6a1-5c1b692a1faf" />
+  <Project Path="MaxEnt.Web/MaxEnt.Web.csproj" Id="b94dc4ac-237f-4c1c-b1fc-a4ca57ec53a6" />
   <Project Path="MyMaxEntV01.csproj" />
   <Project Path="MaxEnt.Logic\MaxEnt.Logic.csproj" />
   <Project Path="MaxEnt.Web\MaxEnt.Web.csproj" />
