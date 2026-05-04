@@ -23,6 +23,7 @@ namespace MyMaxEntV01
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
+            builder.Logging.SetMinimumLevel(LogLevel.Trace);
 #endif
 
             return builder.Build();

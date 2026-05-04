@@ -46,8 +46,10 @@
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
-        <NoWarn>$(NoWarn);NU1510</NoWarn>
-    </PropertyGroup>
+		<NoWarn>$(NoWarn);NU1510</NoWarn>
+		<!-- Exclude sibling sub-projects so their razor files are never globbed into this project -->
+		<DefaultItemExcludes>$(DefaultItemExcludes);MaxEnt.Web\**;MaxEnt.Logic\**;MaxEnt.Shared\**;Models\**</DefaultItemExcludes>
+	</PropertyGroup>
 
     <ItemGroup>
         <!-- App Icon -->
