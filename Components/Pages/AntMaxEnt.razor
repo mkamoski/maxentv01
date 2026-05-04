@@ -247,7 +247,7 @@
 
                     // Save log file with same timestamp
                     AppendLog("\nSaving log file...");
-                    lastLogPath = ChartService.SaveLog(outputLog, timestamp, "ant");
+                    lastLogPath = ChartService.SaveLog(outputLog, timestamp, "maxent-ant");
                     AppendLog($"Log saved to: {Path.GetFullPath(lastLogPath)}");
                     AppendLog("Click 'Open Log' to view the log file.");
                 }
