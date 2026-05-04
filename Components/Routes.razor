@@ -1,6 +1,36 @@
-﻿<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
-</Router>
+﻿<ErrorBoundary @ref="_errorBoundary">
+    <ChildContent>
+        <Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+            <Found Context="routeData">
+                <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </Found>
+        </Router>
+    </ChildContent>
+    <ErrorContent Context="ex">
+        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#1a1a1a;color:#ff6b6b;font-family:monospace;font-size:12px;padding:16px;overflow:auto;z-index:99999;white-space:pre-wrap;">
+            <strong style="font-size:16px;">UNHANDLED EXCEPTION</strong>
+            <br/><br/>
+            <strong>Type:</strong> @ex.GetType().FullName
+            <br/><br/>
+            <strong>Message:</strong> @ex.Message
+            <br/><br/>
+            <strong>Stack Trace:</strong>
+            <br/>@ex.StackTrace
+            @if (ex.InnerException != null)
+            {
+                <br/><br/>
+                <strong>Inner Exception (@ex.InnerException.GetType().FullName):</strong>
+                <br/>@ex.InnerException.Message
+                <br/>@ex.InnerException.StackTrace
+            }
+            <br/><br/>
+            <button onclick="location.reload()" style="background:#444;color:white;border:1px solid #888;padding:8px 16px;cursor:pointer;">Reload</button>
+            <button @onclick="() => _errorBoundary?.Recover()" style="background:#444;color:white;border:1px solid #888;padding:8px 16px;cursor:pointer;margin-left:8px;">Recover</button>
+        </div>
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    private ErrorBoundary? _errorBoundary;
+}
