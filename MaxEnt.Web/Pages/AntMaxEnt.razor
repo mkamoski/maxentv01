@@ -1,0 +1,100 @@
+@page "/antmaxent"
+@using MaxEnt.Logic
+
+<PageTitle>AntMaxEnt</PageTitle>
+
+<h1>Ant - Maximum Entropy RL</h1>
+
+<div>
+    <button @onclick="Reset" disabled="@isRunning">Reset</button>
+    <button @onclick="Run" disabled="@isRunning">Run</button>
+    <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
+</div>
+
+<pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@outputLog</pre>
+
+@code {
+    private bool isRunning;
+    private string outputLog = "";
+    private System.Text.StringBuilder logBuilder = new();
+    private CancellationTokenSource? cts;
+
+    private AntMaxEntEnvironment? env;
+    private MaxEntAgent? agent;
+
+    private void Reset()
+    {
+        env = new AntMaxEntEnvironment();
+        agent = new MaxEntAgent(stateSize: 27, actionSize: 8);
+        logBuilder.Clear();
+        outputLog = "";
+        Log("Ready. Press Run to start training.");
+    }
+
+    private async Task Run()
+    {
+        if (isRunning) return;
+        isRunning = true;
+        cts = new CancellationTokenSource();
+
+        try
+        {
+            env ??= new AntMaxEntEnvironment();
+            agent ??= new MaxEntAgent(stateSize: 27, actionSize: 8);
+
+            var rng = new Random();
+            int episodes = 100;
+
+            for (int ep = 1; ep <= episodes && !cts.Token.IsCancellationRequested; ep++)
+            {
+                double[] state = env.Reset();
+                double totalReward = 0;
+                bool done = false;
+                int steps = 0;
+
+                while (!done && steps < 200)
+                {
+                    // Build continuous action array from agent's discrete policy
+                    double[] actions = new double[8];
+                    for (int i = 0; i < 8; i++)
+                        actions[i] = (rng.NextDouble() * 2 - 1);
+
+                    var (nextState, reward, isDone) = env.Step(actions);
+                    totalReward += reward;
+                    state = nextState;
+                    done = isDone;
+                    steps++;
+                }
+
+                Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F2}, X: {env.PositionX:F2}");
+
+                if (ep % 5 == 0)
+                {
+                    StateHasChanged();
+                    await Task.Delay(1, cts.Token);
+                }
+            }
+
+            Log("Training complete.");
+        }
+        catch (OperationCanceledException)
+        {
+            Log("Stopped.");
+        }
+        finally
+        {
+            isRunning = false;
+            cts?.Dispose();
+            cts = null;
+            StateHasChanged();
+        }
+    }
+
+    private void Stop() => cts?.Cancel();
+
+    private void Log(string msg)
+    {
+        logBuilder.AppendLine(msg);
+        outputLog = logBuilder.ToString();
+    }
+}
