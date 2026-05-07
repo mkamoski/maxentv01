@@ -1,0 +1,61 @@
+@page "/experiment-results"
+@using MaxEnt.Web.Services
+@inject IMaxEntArtifactManager ArtifactManager
+@inject IFileDownloadService FileDownload
+
+<h2>Experiment Results</h2>
+
+<section>
+    <h3>Logs</h3>
+    @if (_logs.Count == 0)
+    {
+        <p>No log files found.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var log in _logs)
+            {
+                <li>
+                    <span>@Path.GetFileName(log)</span>
+                    <button @onclick="() => DownloadAsync(log, Path.GetFileName(log))">Download</button>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+<section>
+    <h3>Latest Graph</h3>
+    @if (_graphPath is null)
+    {
+        <p>No graph available.</p>
+    }
+    else
+    {
+        <button @onclick="DownloadGraphAsync">Download graph.png</button>
+    }
+</section>
+
+@code {
+    private List<string> _logs = [];
+    private string? _graphPath;
+
+    protected override void OnInitialized() => RefreshState();
+
+    private void RefreshState()
+    {
+        var dir = Path.GetTempPath();
+
+        _logs = [.. Directory.GetFiles(dir, "log_*.txt")
+                              .OrderByDescending(File.GetLastWriteTimeUtc)];
+
+        var graph = Path.Combine(dir, "graph.png");
+        _graphPath = File.Exists(graph) ? graph : null;
+    }
+
+    private async Task DownloadAsync(string vfsPath, string outputName) =>
+        await FileDownload.DownloadVfsFileAsync(vfsPath, outputName);
+
+    private Task DownloadGraphAsync() => DownloadAsync(_graphPath!, "graph.png");
+}
