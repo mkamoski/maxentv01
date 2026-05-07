@@ -1,0 +1,35 @@
+@page "/items"
+@inject IAppItemRepository Repository
+
+<h2>Items</h2>
+
+<ul>
+    @foreach (var item in _items)
+    {
+        <li>@item.Name <small>(@item.CreatedAt.ToShortDateString())</small></li>
+    }
+</ul>
+
+<div>
+    <input @bind="_newName" placeholder="Item name" />
+    <button @onclick="AddItemAsync">Add</button>
+</div>
+
+@code {
+    private List<AppItem> _items = [];
+    private string _newName = string.Empty;
+
+    protected override async Task OnInitializedAsync() =>
+        _items = await Repository.GetAllAsync();
+
+    private async Task AddItemAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newName))
+            return;
+
+        var item = new AppItem(Guid.NewGuid(), _newName.Trim(), DateTime.UtcNow);
+        await Repository.AddAsync(item);
+        _items = await Repository.GetAllAsync();
+        _newName = string.Empty;
+    }
+}
