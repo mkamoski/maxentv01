@@ -1,61 +1,72 @@
 @page "/experiment-results"
 @using MaxEnt.Web.Services
-@inject IMaxEntArtifactManager ArtifactManager
+@inject IExperimentLogRepository LogRepo
 @inject IFileDownloadService FileDownload
 
 <h2>Experiment Results</h2>
 
-<section>
-    <h3>Logs</h3>
-    @if (_logs.Count == 0)
-    {
-        <p>No log files found.</p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var log in _logs)
-            {
-                <li>
-                    <span>@Path.GetFileName(log)</span>
-                    <button @onclick="() => DownloadAsync(log, Path.GetFileName(log))">Download</button>
-                </li>
-            }
-        </ul>
-    }
-</section>
+<button @onclick="RefreshAsync">Refresh</button>
 
-<section>
-    <h3>Latest Graph</h3>
-    @if (_graphPath is null)
-    {
-        <p>No graph available.</p>
-    }
-    else
-    {
-        <button @onclick="DownloadGraphAsync">Download graph.png</button>
-    }
-</section>
+@if (_summaries.Count == 0)
+{
+    <p>No results saved yet. Run an experiment and click Save Log.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Source</th>
+                <th>Saved (UTC)</th>
+                <th>Summary</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in _summaries)
+            {
+                <tr>
+                    <td>@s.Source</td>
+                    <td>@s.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@s.Summary</td>
+                    <td>
+                        <button @onclick="() => SelectAsync(s.Id)">View</button>
+                        <button @onclick="() => DownloadAsync(s.Id, s.Source, s.CreatedAt)">Download</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_selected is not null)
+{
+    <hr />
+    <h3>@_selected.Source — @_selected.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC</h3>
+    <pre style="height:400px;overflow-y:auto;background:#111;color:#0f0;padding:8px;white-space:pre-wrap;">@_selected.Content</pre>
+    <button @onclick="() => _selected = null">Close</button>
+}
 
 @code {
-    private List<string> _logs = [];
-    private string? _graphPath;
+    private List<ExperimentLogSummary> _summaries = [];
+    private ExperimentLog? _selected;
 
-    protected override void OnInitialized() => RefreshState();
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
 
-    private void RefreshState()
+    private async Task RefreshAsync()
     {
-        var dir = Path.GetTempPath();
-
-        _logs = [.. Directory.GetFiles(dir, "log_*.txt")
-                              .OrderByDescending(File.GetLastWriteTimeUtc)];
-
-        var graph = Path.Combine(dir, "graph.png");
-        _graphPath = File.Exists(graph) ? graph : null;
+        _summaries = await LogRepo.GetSummariesAsync();
+        _selected = null;
     }
 
-    private async Task DownloadAsync(string vfsPath, string outputName) =>
-        await FileDownload.DownloadVfsFileAsync(vfsPath, outputName);
+    private async Task SelectAsync(Guid id) =>
+        _selected = await LogRepo.GetByIdAsync(id);
 
-    private Task DownloadGraphAsync() => DownloadAsync(_graphPath!, "graph.png");
+    private async Task DownloadAsync(Guid id, string source, DateTime createdAt)
+    {
+        var log = await LogRepo.GetByIdAsync(id);
+        if (log is null) return;
+        var fileName = $"{source}_{createdAt:yyyyMMdd_HHmmss}.txt";
+        await FileDownload.DownloadTextAsync(log.Content, fileName);
+    }
 }
