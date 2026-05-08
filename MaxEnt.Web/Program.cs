@@ -12,8 +12,9 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=app.db"));
+    options.UseSqlite("Data Source=:memory:"));
 builder.Services.AddScoped<IAppItemRepository, AppItemRepository>();
+builder.Services.AddScoped<IExperimentLogRepository, ExperimentLogRepository>();
 builder.Services.AddScoped<IFileDownloadService, BlazorFileDownloadService>();
 builder.Services.AddScoped<IMaxEntArtifactManager, MaxEntArtifactManager>();
 

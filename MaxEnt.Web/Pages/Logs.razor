@@ -1,0 +1,59 @@
+@page "/logs"
+@inject IExperimentLogRepository LogRepo
+
+<h2>Experiment Logs</h2>
+
+<button @onclick="RefreshAsync">Refresh</button>
+
+@if (_summaries.Count == 0)
+{
+    <p>No logs saved yet. Run an experiment and click Save Log.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Source</th>
+                <th>Saved (UTC)</th>
+                <th>Summary</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in _summaries)
+            {
+                <tr>
+                    <td>@s.Source</td>
+                    <td>@s.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@s.Summary</td>
+                    <td><button @onclick="() => SelectAsync(s.Id)">View</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_selected is not null)
+{
+    <hr />
+    <h3>@_selected.Source — @_selected.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC</h3>
+    <pre style="height:400px;overflow-y:auto;background:#111;color:#0f0;padding:8px;white-space:pre-wrap;">@_selected.Content</pre>
+    <button @onclick="() => _selected = null">Close</button>
+}
+
+@code {
+    private List<ExperimentLogSummary> _summaries = [];
+    private ExperimentLog? _selected;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _summaries = await LogRepo.GetSummariesAsync();
+        _selected = null;
+    }
+
+    private async Task SelectAsync(Guid id) =>
+        _selected = await LogRepo.GetByIdAsync(id);
+}

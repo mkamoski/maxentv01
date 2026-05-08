@@ -1,5 +1,6 @@
 @page "/antmaxent"
 @using MaxEnt.Logic
+@inject IExperimentLogRepository LogRepo
 
 <PageTitle>AntMaxEnt</PageTitle>
 
@@ -9,6 +10,7 @@
     <button @onclick="Reset" disabled="@isRunning">Reset</button>
     <button @onclick="Run" disabled="@isRunning">Run</button>
     <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
+    <button @onclick="SaveLogAsync" disabled="@(isRunning || logBuilder.Length == 0)">Save Log</button>
 </div>
 
 <pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@outputLog</pre>
@@ -91,6 +93,13 @@
     }
 
     private void Stop() => cts?.Cancel();
+
+    private async Task SaveLogAsync()
+    {
+        var log = ExperimentLog.Create("AntMaxEnt", logBuilder.ToString());
+        await LogRepo.AddAsync(log);
+        Log("Log saved.");
+    }
 
     private void Log(string msg)
     {
