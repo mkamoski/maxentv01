@@ -3,6 +3,10 @@ using MaxEnt.Web;
 using MaxEnt.Web.Data;
 using MaxEnt.Web.Services;
 using Microsoft.EntityFrameworkCore;
+using SQLitePCL;
+
+// Initialize the WASM-compatible SQLite provider
+raw.SetProvider(new SQLite3Provider_sqlite3());
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
