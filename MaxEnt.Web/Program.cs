@@ -22,6 +22,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(sqliteConnection), ServiceLifetime.Singleton);
 builder.Services.AddSingleton<IAppItemRepository, AppItemRepository>();
 builder.Services.AddSingleton<IExperimentLogRepository, ExperimentLogRepository>();
+builder.Services.AddSingleton<IExperimentGraphRepository, ExperimentGraphRepository>();
 builder.Services.AddSingleton<IFileDownloadService, BlazorFileDownloadService>();
 builder.Services.AddSingleton<IMaxEntArtifactManager, MaxEntArtifactManager>();
 

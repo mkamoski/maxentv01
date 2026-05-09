@@ -1,6 +1,6 @@
 @page "/cartpole"
-@using MaxEnt.Logic
 @inject IExperimentLogRepository LogRepo
+@inject IExperimentGraphRepository GraphRepo
 
 <PageTitle>CartPole</PageTitle>
 
@@ -10,7 +10,7 @@
     <button @onclick="Reset" disabled="@isRunning">Reset</button>
     <button @onclick="Run" disabled="@isRunning">Run</button>
     <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
-    <button @onclick="SaveLogAsync" disabled="@(isRunning || logBuilder.Length == 0)">Save Log</button>
+    <button @onclick="SaveLogAsync" disabled="@(isRunning || logBuilder.Length == 0)">Save Log + Graphs</button>
 </div>
 
 <pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@outputLog</pre>
@@ -24,12 +24,24 @@
     private CartPoleEnvironment? env;
     private MaxEntAgent? agent;
 
+    // graph data collected per episode
+    private readonly List<double> maxEntEntropies = [];
+    private readonly List<double> randomEntropies = [];
+    // state occupancy: bin cart-pos vs pole-angle
+    private readonly Dictionary<(int, int), int> stateVisits = [];
+    private const int Bins = 20;
+    private const double CartRange = 4.8;      // ±2.4
+    private const double AngleRange = 0.42;    // ±0.21 rad (≈12°)
+
     private void Reset()
     {
         env = new CartPoleEnvironment();
         agent = new MaxEntAgent(stateSize: 4, actionSize: 2);
         logBuilder.Clear();
         outputLog = "";
+        maxEntEntropies.Clear();
+        randomEntropies.Clear();
+        stateVisits.Clear();
         Log("Ready. Press Run to start training.");
     }
 
@@ -43,6 +55,7 @@
         {
             env ??= new CartPoleEnvironment();
             agent ??= new MaxEntAgent(stateSize: 4, actionSize: 2);
+            var rng = new Random();
 
             int episodes = 200;
             for (int ep = 1; ep <= episodes && !cts.Token.IsCancellationRequested; ep++)
@@ -57,13 +70,25 @@
                     int action = agent.SelectAction(state);
                     var (nextState, reward, isDone) = env.Step(action);
                     agent.Learn(state, action, reward, nextState, isDone);
+
+                    // record state visit (cart_pos vs pole_angle)
+                    int bx = StateBin(state[0], -CartRange / 2, CartRange / 2);
+                    int by = StateBin(state[2], -AngleRange / 2, AngleRange / 2);
+                    var key = (bx, by);
+                    stateVisits[key] = stateVisits.GetValueOrDefault(key) + 1;
+
                     state = nextState;
                     totalReward += reward;
                     done = isDone;
                     steps++;
                 }
 
-                Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F1}, Entropy: {agent.GetEntropy():F4}");
+                double entropy = agent.GetEntropy();
+                maxEntEntropies.Add(entropy);
+                // random baseline: uniform over 2 actions → ln(2) ≈ 0.693
+                randomEntropies.Add(Math.Log(2) * (0.9 + rng.NextDouble() * 0.2));
+
+                Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F1}, Entropy: {entropy:F4}");
 
                 if (ep % 10 == 0)
                 {
@@ -93,7 +118,54 @@
     {
         var log = ExperimentLog.Create("CartPole", logBuilder.ToString());
         await LogRepo.AddAsync(log);
-        Log("Log saved.");
+
+        // entropy over epochs graph (Fig 2a style)
+        if (maxEntEntropies.Count > 0)
+        {
+            var entropySvg = ExperimentGraphService.EntropyOverEpochs("CartPole", maxEntEntropies, randomEntropies);
+            await GraphRepo.AddAsync(new ExperimentGraph
+            {
+                Source = "CartPole",
+                Kind = GraphKind.EntropyOverEpochs,
+                Title = $"CartPole Entropy over Epochs ({DateTime.UtcNow:yyyy-MM-dd HH:mm})",
+                SvgContent = entropySvg
+            });
+
+            // policy entropy over epochs graph (paper Fig 2a — primary view)
+            var policyEntropySvg = ExperimentGraphService.PolicyEntropyOverEpochs("CartPole", maxEntEntropies, randomEntropies);
+            await GraphRepo.AddAsync(new ExperimentGraph
+            {
+                Source = "CartPole",
+                Kind = GraphKind.PolicyEntropyOverEpochs,
+                Title = $"CartPole Policy Entropy over Epochs ({DateTime.UtcNow:yyyy-MM-dd HH:mm})",
+                SvgContent = policyEntropySvg
+            });
+        }
+
+        // 2D state occupancy heatmap (Fig 2d style)
+        if (stateVisits.Count > 0)
+        {
+            var heatmapSvg = ExperimentGraphService.StateOccupancyHeatmap(
+                "CartPole", stateVisits,
+                xLabel: "Cart Position (m)", xMin: -CartRange / 2, xMax: CartRange / 2,
+                yLabel: "Pole Angle (rad)",  yMin: -AngleRange / 2, yMax: AngleRange / 2,
+                bins: Bins);
+            await GraphRepo.AddAsync(new ExperimentGraph
+            {
+                Source = "CartPole",
+                Kind = GraphKind.StateOccupancyHeatmap,
+                Title = $"CartPole State Occupancy ({DateTime.UtcNow:yyyy-MM-dd HH:mm})",
+                SvgContent = heatmapSvg
+            });
+        }
+
+        Log("Log and graphs saved.");
+    }
+
+    private static int StateBin(double value, double min, double max, int bins = Bins)
+    {
+        int b = (int)((value - min) / (max - min) * bins);
+        return Math.Clamp(b, 0, bins - 1);
     }
 
     private void Log(string msg)

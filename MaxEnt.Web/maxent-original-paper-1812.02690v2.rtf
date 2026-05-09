@@ -1,0 +1,990 @@
+{\rtf1\ansi\deff3\adeflang1025
+{\fonttbl{\f0\froman\fprq2\fcharset0 Times New Roman;}{\f1\froman\fprq2\fcharset2 Symbol;}{\f2\fswiss\fprq2\fcharset0 Arial;}{\f3\froman\fprq2\fcharset0 Liberation Serif{\*\falt Times New Roman};}{\f4\fswiss\fprq2\fcharset0 Liberation Sans{\*\falt Arial};}{\f5\fswiss\fprq0\fcharset0 Lucida Sans;}}
+{\colortbl;\red0\green0\blue0;\red0\green0\blue255;\red0\green255\blue255;\red0\green255\blue0;\red255\green0\blue255;\red255\green0\blue0;\red255\green255\blue0;\red255\green255\blue255;\red0\green0\blue128;\red0\green128\blue128;\red0\green128\blue0;\red128\green0\blue128;\red128\green0\blue0;\red128\green128\blue0;\red128\green128\blue128;\red192\green192\blue192;\red153\green204\blue255;}
+{\stylesheet{\s0\snext0\rtlch\af7\afs24\alang1081 \ltrch\lang1033\langfe2052\hich\af3\loch\nowidctlpar\hyphpar0\aspalpha\ltrpar\cf0\f3\fs24\lang1033\dbch\af6\langfe2052 Normal;}
+{\s1\sbasedon24\snext21\rtlch\afs48\ab \ltrch\loch\fs48\b heading 1;}
+{\*\cs15\snext15\loch\super endnote reference;}
+{\*\cs16\snext16\loch\super footnote reference;}
+{\*\cs17\snext17 Endnote Characters;}
+{\*\cs18\snext18 Footnote Characters;}
+{\*\cs19\snext19\loch\cf9\ul\ulc0 Hyperlink;}
+{\s20\sbasedon0\snext21\loch\sb0\sa283\brdrt\brdrnone\brdrl\brdrnone\brdrb\brdrdb\brdrw7\brdrcf15\brsp0\brdrr\brdrnone\fs12 Horizontal Line;}
+{\s21\sbasedon0\snext21\loch\sb0\sa283 Body Text;}
+{\s22\sbasedon0\snext22\loch\i envelope return;}
+{\s23\sbasedon21\snext23 Table Contents;}
+{\s24\sbasedon0\snext21\rtlch\afs28 \ltrch\hich\af4\loch\sb240\sa283\keepn\f4\fs28 Heading;}
+{\s25\sbasedon0\snext25\rtlch\af5 \ltrch\loch\noline Index;}
+{\s26\sbasedon0\snext26\rtlch\af5\afs24\ai \ltrch\loch\sb120\sa120\noline\fs24\i caption;}
+{\s27\sbasedon21\snext27\rtlch\af5 \ltrch List;}
+}{\*\generator LibreOffice/25.2.3.2$Linux_AARCH64 LibreOffice_project/520$Build-2}{\info{\creatim\yr0\mo0\dy0\hr0\min0}{\revtim\yr0\mo0\dy0\hr0\min0}{\printim\yr0\mo0\dy0\hr0\min0}}{\*\userprops}
+\hyphauto1\viewscale100\formshade\nobrkwrptbl{\*\pgdscno2}\paperh16838\paperw11906\margl1134\margr567\margt567\margb567\sectd\sbknone\sftnnar\saftnnrlc\sectunlocked1\pgwsxn11906\pghsxn16838\marglsxn1134\margrsxn567\margtsxn567\margbsxn567\ftnbj\ftnstart1\ftnrstcont\ftnnar\fet\aftnrstcont\aftnstart1\aftnnrlc
+{\*\ftnsep\chftnsep}\pgndec\pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+Provably Efficient Maximum Entropy Exploration\line Elad Hazan1 2 Sham M. Kakade1 3 4 Karan Singh1 2 Abby Van Soest2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1 Google AI Princeton\line 2 Department of Computer Science, Princeton University}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3 Allen School of Computer Science and Engineering, University of Washington\line 4 Department of Statistics, University of Washington}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\{ehazan,karans,asoest\}@princeton.edu, sham@cs.washington.edu}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Abstract\line Suppose an agent is in a (possibly unknown) Markov Decision Process in the absence of a reward}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+signal, what might we hope that an agent can efficiently learn to do? This work studies a broad class of\line objectives that are defined solely as functions of the state-visitation frequencies that are induced by how\line the agent behaves. For example, one natural, intrinsically defined, objective problem is for the agent to\line learn a policy which induces a distribution over state space that is as uniform as possible, which can be\line measured in an entropic sense. We provide an efficient algorithm to optimize such such intrinsically defined\line objectives, when given access to a black box planning oracle (which is robust to function approximation).\line Furthermore, when restricted to the tabular setting where we have sample based access to the MDP, our\line proposed algorithm is provably efficient, both in terms of its sample and computational complexities.\line Key to our algorithmic methodology is utilizing the conditional gradient method (a.k.a. the Frank-Wolfe\line algorithm) which utilizes an approximate MDP solver.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1 Introduction\line A fundamental problem in reinforcement learning is that of exploring the state space. How do we understand\line what is even possible in a given environment without a reward signal?}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+This question has received a lot of attention, with approaches such as learning with intrinsic reward and\line curiosity driven methods, surveyed below. Our work studies a class of objectives that is defined solely as\line function of the state-visitation frequencies. A natural such objective is finding a policy that maximizes the\line entropy of the induced distribution over the state space. More generally, our approach extends to any concave\line function over distributions.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Suppose the MDP is fully and precisely known, in terms of states, actions, and the entire transition matrix.\line Then maximizing the entropy can be recast as a convex optimization problem (see Section 3.2.2 or [DFVR03])\line over the space of state-visitation frequencies induced by the exhaustive set of all policies. However, most RL\line instances that are common in practice exhibit at least one of several complications:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8212\'97 }{\loch
+prohibitively large state space (i.e. Chess or Go)\line \u8212\'97 unknown transition matrix (as in common Atari games)\line These scenarios often require function approximation, ie. restricting the search to a non-linearly parameterized\line policy class (eg. neural networks), which makes the entropy maximization problem non-convex.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+As a remedy for the computational difficulty, we propose considering an approximate planning oracle: an\line efficient method that given a well-specified reward signal can find an optimizing policy. Such sample-based\line planning oracles have been empirically observed to work well with non-linear policy classes. Given such an\line oracle, we give a provably efficient method for exploration based on the conditional gradient (or Frank-Wolfe)\line algorithm [FW56].}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+ar\line X}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+iv\line :1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+81\line 2.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+02\line 69}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+0v\line 2 }
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[\line cs}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+.L\line G}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+] \line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+6 \line Ja}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+n \line 20}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+19}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+Formally, we show how to generate a sequence of reward signals, that sequentially optimized give rise\line to a policy with entropy close to optimal. Our main theorem gives a bound on the number of calls to the\line planning oracle, which is independent of the size of the state space of the MDP. Next, we outline the efficient\line construction of such oracles and state the resultant sample & computational complexity in the tabular MDP\line setting. As a proof of concept, we implement our method and show experiments over several mainstream RL\line tasks in Section 5.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1.1 Informal statement of contributions\line To facilitate exploration in potentially unknown MDPs within a restricted policy class, we assume access to\line the environment using the following two oracles:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Approximate planning oracle: Given a reward function (on states) r : S \u8594\'3f R and a sub-optimality\line gap \u949\'3f, the planning oracle returns a stationary policy \u960\'3f = ApproxPlan(r, \u949\'3f) with the guarantee that\line V (\u960\'3f) \u8805\'3f max\u960\'3f V (\u960\'3f)\u8722\'3f \u949\'3f, where V (\u960\'3f) is the value of policy \u960\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+State distribution estimate oracle: A state distribution oracle estimates the state distribution\line d\u770\'3f\u960\'3f = DensityEst(\u960\'3f, \u949\'3f) of any given (non-stationary) policy \u960\'3f, guaranteeing that \u8214\'3fd\u960\'3f \u8722\'3f d\u770\'3f\u960\'3f\u8214\'3f\u8734\'3f \u8804\'3f \u949\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Given access to these two oracles, we describe a method that provably optimizes any continuous and\line smooth objective over the state-visitation frequencies. Of special interest is the maximum entropy and relative\line entropy objectives.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Theorem 1.1 (Main Theorem - Informal). There exists an efficient algorithm (Algorithm 1) such that for\line any \u946\'3f-smooth measure R, and any \u949\'3f > 0, in O( 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u949\'3f log 1\line \u949\'3f ) calls to ApproxPlan & DensityEst , it returns a}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+policy \u960\'3f\u772\'3f with\line R(d\u960\'3f\u772\'3f) \u8805\'3f max}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3f\line R(d\u960\'3f)\u8722\'3f \u949\'3f .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1.2 Related work\line We review related works in this section.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Reward Shaping & Imitation Learning: Direct optimization approaches to RL (such as policy\line gradient methods) tend to perform favorably when random sequences of actions lead the agent to some\line positive reward, but tend to fail when the rewards are sparse or myopic. Thus far, the most practical\line approaches to address this have either been through some carefully constructed reward shaping (e.g. [NHR99]\line where dense reward functions are provided to make the optimization problem more tractable) or through\line inverse reinforcement learning and imitation learning [AN04, RGB11] (where an expert demonstrates to the\line agent how to act).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+PAC Learning: For the case of tabular Markov decision processes, the balance of exploration and\line exploitation has been addressed in that there are a number of methods which utilize confidence based reward\line bonuses to encourage exploration in order to ultimately behave near optimally [KS02, Kak03, SLW+06, LH14,\line DB15, SS10, AOM17].}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Count-based Models & Directed Exploration: There are a host of recent empirical success using\line deep RL methods which encourage exploration in some form[MKS+15, SHM+16]. The approaches which\line encourage exploration are based on a few related ideas: that of encouraging encouraging exploration through\line state visitation frequencies (e.g. [OBvdOM17, BSO+16, THF+17]) and those based on a intrinsic reward\line signal derived from novelty or prediction error [LLTyO12, PAED17, SRM+18, FCRL17, MJR15, HCC+16,\line WRR+17], aligning an intrinsic reward to the target objective [Kae93, CBS05, SLBS10, SLB09, ZOS18], or\line sample based approaches to tracking of value function uncertainty [OBPVR16, OAC18].}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Intrinsic Learning: Works in [CBS05, SLB09, SLBS10] established computational theories of intrinsic\line reward signals (and how it might help with downstream learning of tasks) and other works also showed how\line to incorporate intrinsic rewards (in the absence of any true reward signal) [WdWK+18, BESK18, BEP+18,\line NPD+18]. The potential benefit is that such learning may help the agent reach a variety of achievable goals\line and do well on other extrinsically defined tasks, not just the task under which it was explicitly trained for\line under one specific reward function (e.g. see [CBS05, SLB09, WdWK+18, NPD+18]).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+2 Preliminaries\line Markov decision process: An infinite-horizon discounted Markov Decision Process is a tuple M =\line (S,A, r, P, \u947\'3f, d0), where S is the set of states, A is the set of actions, and d0 is the distribution of of the\line initial state s0. At each timestep t, upon observing the state st, the execution of action at triggers an\line observable reward of rt = r(st, at) and a transition to a new state st+1 \u8764\'3f P (\u183\'b7|st, at). The performance on an\line infinite sequence of states & actions (hereafter, referred to as a trajectory) is judged through the (discounted)\line cumulative reward it accumulates, defined as}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+V (\u964\'3f = (s0, a0, s1, a1, . . . )) = (1\u8722\'3f \u947\'3f)\line \u8734\'3f\u8721\'3f\line t=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u947\'3ftr(st, at).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Policies: A policy is a (randomized) mapping from a history, say (s0, a0, r0, s1, a1, r1 . . . st\u8722\'3f1, at\u8722\'3f1, rt\u8722\'3f1),\line to an action at. A stationary policy \u960\'3f is a (randomized) function which maps a state to an action in a\line time-independent manner, i.e. \u960\'3f : S \u8594\'3f \u8710\'3f(A). When a policy \u960\'3f is executed on some MDP M, it produces a\line distribution over infinite-length trajectories \u964\'3f = (s0, a0, s1, a1 . . . ) as specified below.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+P (\u964\'3f |\u960\'3f) = P (s0)\line \u8734\'3f\u8719\'3f\line i=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\u960\'3f(ai|si)P (si+1|si, ai))}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The (discounted) value V\u960\'3f of a policy \u960\'3f is the expected cumulative reward an action sequence sampled from\line the policy \u960\'3f gathers.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+V\u960\'3f = E\line \u964\'3f\u8764\'3fP (\u183\'b7|\u960\'3f)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+V (\u964\'3f) = (1\u8722\'3f \u947\'3f) E\line \u964\'3f\u8764\'3fP (\u183\'b7|\u960\'3f)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8734\'3f\u8721\'3f}{\loch
+\line t=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u947\'3ftr(st, at)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Induced state distributions: The t-step state distribution and the (discounted) state distribution of a\line policy \u960\'3f that result are}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+dt,\u960\'3f(s) = P (st = s|\u960\'3f) =\line \u8721\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+all \u964\'3f with st=s\line P (\u964\'3f |\u960\'3f), (2.1)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+dt,\u960\'3f(s, a) = P (st = s, at = a|\u960\'3f) =\line \u8721\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+all \u964\'3f with st=s,at=a\line P (\u964\'3f |\u960\'3f), (2.2)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+d\u960\'3f(s) = (1\u8722\'3f \u947\'3f)\line \u8734\'3f\u8721\'3f\line t=1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u947\'3ftdt,\u960\'3f(s), (2.3)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+d\u960\'3f(s, a) = (1\u8722\'3f \u947\'3f)\line \u8734\'3f\u8721\'3f\line t=1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u947\'3ftdt,\u960\'3f(s, a). (2.4)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The latter distribution can be viewed as the analogue of the stationary distribution in the infinite horizon\line setting.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Mixtures of stationary policies: Given a sequence of k policies C = (\u960\'3f0, . . . \u960\'3fk\u8722\'3f1), and \u945\'3f \u8712\'3f \u8710\'3fk,\line we define \u960\'3fmix = (\u945\'3f,C) to be a mixture over stationary policies. The (non-stationary) policy \u960\'3fmix is one\line where, at the first timestep t = 0, we sample policy \u960\'3fi with probability \u945\'3fi and then use this policy for all\line subsequent timesteps. In particular, the behavior of a mixture \u960\'3fmix with respect to an MDP is that it induces\line infinite-length trajectories \u964\'3f = (s0, a0, s1, a1 . . . ) with the probability law :}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+P (\u964\'3f |\u960\'3fmix) =\line k\u8722\'3f1\u8721\'3f\line i=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u945\'3fiP (\u964\'3f |\u960\'3fi) (2.5)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+and the induced state distribution is:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+d\u960\'3fmix(s) =\line k\u8722\'3f1\u8721\'3f\line i=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u945\'3fid\u960\'3fi(s). (2.6)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+Note that such a distribution over policies need not be representable as a stationary stochastic policy (even if\line the \u960\'3fi\u8217\'92s are stationary) due to that the sampled actions are no longer conditionally independent given the\line states.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3 The Objective: MaxEnt Exploration\line As each policy induces a distribution over states, we can associate a concave reward functional R(\u183\'b7) with this\line induced distribution. We say that a policy \u960\'3f\u8727\'2a is a maximum-entropy exploration policy, also to referred to as\line the max-ent policy, if the corresponding induced state distribution has the maximum possible R(d\u960\'3f) among\line the class of all policies. Lemma 3.3 assures us that the search over the class of stationary policies is sufficient.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3f\u8727\'2a \u8712\'3f arg max\line \u960\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+R(d\u960\'3f).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Our goal is to find a policy that induces a state distribution with a comparable value of the reward functional.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3.1 Examples of reward functionals\line A possible quantity of interest that serves as a motivation for considering such functionals is the entropy of\line the induced distribution.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+max\line \u960\'3f\line \{H(d\u960\'3f) = \u8722\'3f E}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s\u8764\'3fd\u960\'3f\line log d\u960\'3f(s)\}}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The same techniques we derive can also be used to optimize other entropic measures. For example, we may\line be interested in minimizing:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+min\line \u960\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\{\line KL(d\u960\'3f||Q) = E}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s\u8764\'3fd\u960\'3f\line log}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+d\u960\'3f(s)\line Q(s)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\}\line for some given distribution Q(s). Alternatively, we may seek to minimize a cross entropy measure:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+min\line \u960\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\{\line E\line s\u8764\'3fQ}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+log\line 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+d\u960\'3f(s)\line = KL(Q||d\u960\'3f) +H(Q)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\}\line where the expectation is now under Q. For uniform Q, this latter measure may be more aggressive in forcing\line \u960\'3f to have more uniform coverage than the entropy objective.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3.2 Landscape of the objective function\line In this section, we establish that the entropy of the state distribution is not a concave function of the policy.\line Similar constructions can establish analogous statements for other non-trivial functionals. Subsequently, we\line discuss a possible convex reformulation of the objective in the space of induced distributions which constitute\line a convex set.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3.2.1 Non-convexity in the policy space}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Despite the concavity of the entropy function, our overall maximization problem is not concave as the state\line distribution is not an affine function of the policy. This is stated precisely in the following lemma.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Lemma 3.1. H(d\u960\'3f) is not concave in \u960\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Proof. Figure 1 demonstrates the behavior of \u960\'3f0, \u960\'3f1, \u960\'3f2 on a 6-state MDP with binary actions. Note that for\line sufficiently large \u947\'3f \u8594\'3f 1 and any policy \u960\'3f, the discounted state distribution converges to the distribution on\line the states at the second timestep, or formally d\u960\'3f \u8594\'3f d2,\u960\'3f. Now with the realization \u960\'3f0 = \u960\'3f1+\u960\'3f2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2 , observe that\line d2,\u960\'3f0 is not uniform on \{s2,0, s2,1, s2,2\}, implying that H(d2,\u960\'3f0) <}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+H(d2,\u960\'3f1 )+H(d2,\u960\'3f2 )\line 2 .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+4}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+s0,0start}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s1,0 s1,1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s2,0 s2,1 s2,2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3\line 4}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 4}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 4}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3\line 4}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1 1 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(a) \u960\'3f0, d2,\u960\'3f0 =\line (\line 3\line 8\line , 1\line 4\line , 3\line 8\line )}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s0,0start}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s1,0 s1,1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s2,0 s2,1 s2,2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2\line 3}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 3}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+0 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1 1 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(b) \u960\'3f1, d2,\u960\'3f1 =\line (\line 1\line 3\line , 1\line 3\line , 1\line 3\line )}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s0,0start}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s1,0 s1,1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+s2,0 s2,1 s2,2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 3}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2\line 3}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1 0 1\line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1 1 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(c) \u960\'3f2, d2,\u960\'3f2 =\line (\line 1\line 3\line , 1\line 3\line , 1\line 3\line )}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Figure 1: Description of \u960\'3f0, \u960\'3f1, \u960\'3f2.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Lemma 3.2. For any policy \u960\'3f and MDP M, define the matrix P\u960\'3f \u8712\'3f R|S|\u215\'d7|S| so that}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+P\u960\'3f(s\u8242\'27, s) =\line \u8721\'3f\line a\u8712\'3fA}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3f(a|s)P (s\u8242\'27|s, a).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Then it is true that}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1. P\u960\'3f is linear in \u960\'3f,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2. dt,\u960\'3f = P t\u960\'3fd0 for all t \u8805\'3f 0,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3. d\u960\'3f = (1\u8722\'3f \u947\'3f)(I \u8722\'3f \u947\'3fP\u960\'3f)\u8722\'3f1d0.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Proof. Linearity of P\u960\'3f is evident from the definition. (2,3) may be verified by calculation.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3.2.2 Convexity in the distribution space}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Define the set of all induced distributions as K = \{d : d(s, a) \u8805\'3f 0 and satisfies the constraints stated below\}.\line For every d \u8712\'3f K, it is possible to construct a policy \u960\'3f with d\u960\'3f = d, and for every \u960\'3f, d\u960\'3f \u8712\'3f K holds [Put14].\u8721\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+a\line d(s, a) = (1\u8722\'3f \u947\'3f)d0(s) + \u947\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8721\'3f}{\loch
+\line s\u8242\'27,a\u8242\'27}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+P (s|s\u8242\'27, a\u8242\'27)d(s\u8242\'27, a\u8242\'27)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The search for a max-ent policy can be recast as a convex optimization problem over the space of distributions.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+max\line d\u8712\'3fK}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+R(d).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Although we outline this reduction for an unrestricted policy class, similar reductions are possible for linearly-\line parameterized policy classes. These techniques can be extended to the case of MDPs with unknown dynamics\line [DFVR03].}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3.2.3 Sufficiency of Stationary Policies}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The set of non-Markovian policies is richer than the set of Markov stationary policies in terms of the\line distributions over trajectories each may induce. A priori, it is not evident that maximizing R(d\u960\'3f) over the\line set of stationary policies is sufficient to guarantee the optimality in a larger class of all policies. Lemma 3.3\line establishes this claim by equating the set of achievable induced state distributions for these two sets of policies.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Lemma 3.3. [Put14] For any possibly non-Markovian policy \u960\'3f, define a stationary Markov policy \u960\'3f\u8242\'27 as\line \u960\'3f\u8242\'27(a|s) = d\u960\'3f(s,a)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+d\u960\'3f(s) . Then, d\u960\'3f = d\u960\'3f\u8242\'27 .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+5}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+Algorithm 1 Maximum-entropy policy computation.\line 1: Input: Step size \u951\'3f, number of iterations T , planning oracle error tolerance \u949\'3f1 > 0, state distribution}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+oracle error tolerance \u949\'3f0 > 0, reward functional R.\line 2: Set C0 = \{\u960\'3f0\} where \u960\'3f0 is an arbitrary policy.\line 3: Set \u945\'3f0 = 1.\line 4: for t = 0, . . . , T \u8722\'3f 1 do\line 5: Call the state distribution oracle on \u960\'3fmix,t = (\u945\'3ft, Ct):}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+d\u770\'3f\u960\'3fmix,t\line = DensityEst (\u960\'3fmix,t, \u949\'3f0)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+6: Define the reward function rt as}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+rt(s) = \u8711\'3fR(d\u770\'3f\u960\'3fmix,t\line ) :=}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+dR(X)\line dX}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8739\'3f\u8739\'3f\u8739\'3f\u8739\'3f\u8739\'3f}{\loch
+\line X=d\u770\'3f\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+7: Compute the (approximately) optimal policy on rt:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3ft+1 = ApproxPlan (rt, \u949\'3f1) .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+8: Update \u960\'3fmix,t+1 = (\u945\'3ft+1, Ct+1) to be}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Ct+1 = (\u960\'3f0, . . . , \u960\'3ft, \u960\'3ft+1), (4.1)\line \u945\'3ft+1 = ((1\u8722\'3f \u951\'3f)\u945\'3ft, \u951\'3f). (4.2)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+9: end for\line 10: return \u960\'3fmix,T = (\u945\'3fT , CT ).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+4 Algorithms & Main Results\line The algorithm maintains a distribution over policies, and proceeds by adding a new policy to the support of\line the mixture and reweighing the components. To describe the algorithm, we will utilize access to two kinds of\line oracles. The constructions for these are detailed in later sections.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Approximate planning oracle: Given a reward function (on states) r : S \u8594\'3f R and a sub-optimality\line gap \u949\'3f1, the planning oracle returns a stationary1 policy \u960\'3f = ApproxPlan(r, \u949\'3f1) with the guarantee that\line V\u960\'3f \u8805\'3f max\u960\'3f V\u960\'3f \u8722\'3f \u949\'3f1.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+State distribution estimate oracle: A state distribution oracle estimates the state distribution\line d\u770\'3f\u960\'3f = DensityEst(\u960\'3f, \u949\'3f0) of any given (non-stationary) policy \u960\'3f, guaranteeing that \u8214\'3fd\u960\'3f \u8722\'3f d\u770\'3f\u960\'3f\u8214\'3f\u8734\'3f \u8804\'3f \u949\'3f0.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+We shall assume in the following discussion that the reward functional R is \u946\'3f-smooth, B-bounded, and\line that it satisfies the following inequality for all X,Y .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8214\'3f\u8711\'3f}{\loch
+R(X)\u8722\'3f\u8711\'3fR(Y )\u8214\'3f\u8734\'3f \u8804\'3f \u946\'3f\u8214\'3fX \u8722\'3f Y \u8214\'3f\u8734\'3f (4.3)\line \u8722\'3f \u946\'3fI ? \u8711\'3f2R(X) ? \u946\'3fI; \u8214\'3f\u8711\'3fR(X)\u8214\'3f\u8734\'3f \u8804\'3f B (4.4)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Theorem 4.1 (Main Theorem). For any \u949\'3f > 0, set \u949\'3f1 = 0.1\u949\'3f, \u949\'3f0 = 0.1\u946\'3f\u8722\'3f1\u949\'3f, and \u951\'3f = 0.1\u946\'3f\u8722\'3f1\u949\'3f. When\line Algorithm 1 is run for T iterations where:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+T \u8805\'3f 10\u946\'3f\u949\'3f\u8722\'3f1 log 10B\u949\'3f\u8722\'3f1 ,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+we have that:\line R(\u960\'3fmix,T ) \u8805\'3f max}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3f\line R(d\u960\'3f)\u8722\'3f \u949\'3f .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1As the oracle is solving a discounted problem, we know the optimal value is achieved by a stationary policy.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+6}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+Before we begin the proof, we state the implication for maximizing the entropy of the induced distribution.\line While the entropy objective is, strictly speaking, not smooth, one may consider a smoothed alternative H\u963\'3f\line defined below.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+H\u963\'3f(d\u960\'3f) = \u8722\'3fEs\u8764\'3fd\u960\'3f log(d\u960\'3f(s) + \u963\'3f)\line When the algorithm is fed H\u963\'3f as the proxy reward functional, it is possible make sub-optimality guarantees\line on the true objective H. Lemma 4.3 (D) relates the entropy functional H to its smoothed variant H\u963\'3f, while\line the rest of the lemma quantifies smoothness of H\u963\'3f. The factors of |S| incurred below are a consequence of\line imposed smoothing on H, and are not necessary for naturally smooth objectives.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Corollary 4.2. For any \u949\'3f > 0, set \u963\'3f = 0.1\u949\'3f\line 2|S| , \u949\'3f1 = 0.1\u949\'3f, \u949\'3f0 = 0.1\u949\'3f2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+80|S| , and \u951\'3f = 0.1\u949\'3f2\line 40|S| . When Algorithm 1 is run}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+for T iterations with the reward functional H\u963\'3f, where:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+T \u8805\'3f 40|S|\line 0.1\u949\'3f2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+log\line log |S|\line 0.1\u949\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+we have that:\line H(\u960\'3fmix,T ) \u8805\'3f max}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3f\line H(d\u960\'3f)\u8722\'3f \u949\'3f .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+We continue with the proof of the main theorem.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Proof of Theorem 4.1. Let \u960\'3f\u8727\'2a be a maximum-entropy policy, ie. \u960\'3f\u8727\'2a \u8712\'3f arg max\u960\'3f R(d\u960\'3f).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+R(d\u960\'3fmix,t+1) = R((1\u8722\'3f \u951\'3f)d\u960\'3fmix,t + \u951\'3fd\u960\'3ft+1) Equation 2.6\line \u8805\'3f R(d\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+) + \u951\'3f}{\dbch
+\u12296\'3f}{\loch
+d\u960\'3ft+1\line \u8722\'3f d\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+,\u8711\'3fR(d\u960\'3fmix,t\line )}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+\u951\'3f2\u946\'3f\u8214\'3fd\u960\'3ft+1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8722\'3f }{\loch
+d\u960\'3fmix,t\line \u8214\'3f22 smoothness}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The second inequality follows from the smoothness of R. (See Section 2.1 in [B+15] for equivalent definitions\line of smoothness in terms of the function value and the Hessian.)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+To incorporate the error due to the two oracles, observe}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\dbch
+\u12296\'3f}{\loch
+d\u960\'3ft+1\line ,\u8711\'3fR(d\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)}{\dbch
+\u12297\'3f \u8805\'3f \u12296\'3f}{\loch
+d\u960\'3ft+1\line ,\u8711\'3fR(d\u770\'3f\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+\u946\'3f\u8214\'3fd\u960\'3fmix,t\line \u8722\'3f d\u770\'3f\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8214\'3f\u8734\'3f}{\loch
+\line \u8805\'3f }{\dbch
+\u12296\'3f}{\loch
+d\u960\'3f\u8727\'2a ,\u8711\'3fR(d\u770\'3f\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+\u946\'3f\u949\'3f0 \u8722\'3f \u949\'3f1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8805\'3f }{\dbch
+\u12296\'3f}{\loch
+d\u960\'3f\u8727\'2a ,\u8711\'3fR(d\u960\'3fmix,t\line )}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+2\u946\'3f\u949\'3f0 \u8722\'3f \u949\'3f1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The first and last inequalities invoke the assumptions laid out in Equation 4.3. Note that the second inequality\line above follows from the defining character of the planning oracle, ie. with respect to the reward vector\line rt = \u8711\'3fR(d\u770\'3f\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+), for any policy \u960\'3f\u8242\'27, it holds true that}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+V\u960\'3ft+1\line = }{\dbch
+\u12296\'3f}{\loch
+d\u960\'3ft+1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+, rt}{\dbch
+\u12297\'3f \u8805\'3f }{\loch
+V\u960\'3f\u8242\'27 \u8722\'3f \u949\'3f1 = }{\dbch
+\u12296\'3f}{\loch
+d\u960\'3f\u8242\'27 , rt}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+\u949\'3f1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+In particular, this statement holds for the choice \u960\'3f\u8242\'27 = \u960\'3f\u8727\'2a. This argument does not rely on \u960\'3f\u8727\'2a being a\line stationary policy, since \u960\'3ft+1 is an optimal policy for the reward function rt among the class of all policies.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Using the above fact and continuing on}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+R(d\u960\'3fmix,t+1\line ) \u8805\'3f R(d\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+) + \u951\'3f}{\dbch
+\u12296\'3f}{\loch
+d\u960\'3f\u8727\'2a \u8722\'3f d\u960\'3fmix,t\line ,\u8711\'3fR(d\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+2\u951\'3f\u946\'3f\u949\'3f0 \u8722\'3f \u951\'3f\u949\'3f1 \u8722\'3f \u951\'3f2\u946\'3f\line \u8805\'3f (1\u8722\'3f \u951\'3f)R(d\u960\'3fmix,t) + \u951\'3fR(d\u960\'3f\u8727\'2a)\u8722\'3f 2\u951\'3f\u946\'3f\u949\'3f0 \u8722\'3f \u951\'3f\u949\'3f1 \u8722\'3f \u951\'3f2\u946\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The last step here utilizes the concavity of R. Indeed, the inequality follows immediately from the sub-gradient\line characterization of concave functions. Now, with the aid of the above, we observe the following inequality.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+R(d\u960\'3f\u8727\'2a)\u8722\'3fR(d\u960\'3fmix,t+1\line ) \u8804\'3f (1\u8722\'3f \u951\'3f)(R(d\u960\'3f\u8727\'2a)\u8722\'3fR(d\u960\'3fmix,t}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)) + 2\u951\'3f\u946\'3f\u949\'3f0 + \u951\'3f\u949\'3f1 + \u951\'3f2\u946\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Telescoping the inequality, this simplifies to}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+R(d\u960\'3f\u8727\'2a)\u8722\'3fR(d\u960\'3fmix,T\line ) \u8804\'3f (1\u8722\'3f \u951\'3f)T (R(d\u960\'3f\u8727\'2a)\u8722\'3fR(d\u960\'3fmix,0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)) + 2\u946\'3f\u949\'3f0 + \u949\'3f1 + \u951\'3f\u946\'3f\line \u8804\'3f Be\u8722\'3fT\u951\'3f + 2\u946\'3f\u949\'3f0 + \u949\'3f1 + \u951\'3f\u946\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Setting \u949\'3f1 = 0.1\u949\'3f, \u949\'3f0 = 0.1\u946\'3f\u8722\'3f1\u949\'3f, \u951\'3f = 0.1\u946\'3f\u8722\'3f1\u949\'3f, T = \u951\'3f\u8722\'3f1 log 10B\u949\'3f\u8722\'3f1 suffices.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+7}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+The following lemma is helpful in proving the corollary for the entropy functional.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Lemma 4.3. For any two distributions P,Q \u8712\'3f \u8710\'3fd:}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(A) (\u8711\'3fH\u963\'3f(P ))i = \u8722\'3f\line (}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+log(Pi + \u963\'3f) + Pi\line Pi+\u963\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line ,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(B) H\u963\'3f(P ) in concave in P ,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(C) H\u963\'3f(P ) is 2\u963\'3f\u8722\'3f1 smooth, ie.\line \u8722\'3f2\u963\'3f\u8722\'3f1Id ? \u8711\'3f2R(P ) ? 2\u963\'3f\u8722\'3f1Id,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(D) |H\u963\'3f(P )\u8722\'3fR(P )| \u8804\'3f d\u963\'3f,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(E) \u8214\'3f\u8711\'3fH\u963\'3f(P )\u8722\'3f\u8711\'3fH\u963\'3f(Q)\u8214\'3f\u8734\'3f \u8804\'3f 2\u963\'3f\u8722\'3f1\u8214\'3fP \u8722\'3fQ\u8214\'3f\u8734\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Proof of Lemma 4.3. (A) may be verified by explicit calculation. Observe \u8711\'3f2H\u963\'3f(P ) is a diagonal matrix\line with entries}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\u8711\'3f2H\u963\'3f(P ))i,i = \u8722\'3f Pi + 2\u963\'3f\line (Pi + \u963\'3f)2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(B) is immediate. (C) follows as |(\u8711\'3f2H\u963\'3f(P ))i,i| \u8804\'3f 2\u963\'3f\u8722\'3f1.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+|H\u963\'3f(P )\u8722\'3fH(P )| =\line d\u8722\'3f1\u8721\'3f\line i=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Pi log\line Pi + \u963\'3f\line Pi}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8804\'3f}{\loch
+\line d\u8722\'3f1\u8721\'3f\line i=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Pi\line \u963\'3f\line Pi}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+= d\u963\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The last inequality follows from log x \u8804\'3f x\u8722\'3f 1,\u8704\'3fx > 0. Finally, to see (E), using Taylor\u8217\'92s theorem, observe}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8214\'3f\u8711\'3f}{\loch
+H\u963\'3f(P )\u8722\'3f\u8711\'3fH\u963\'3f(Q)\u8214\'3f\u8734\'3f \u8804\'3f max\line i,\u945\'3f\u8712\'3f[0,1]}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+|(\u8711\'3f2H\u963\'3f(\u945\'3fP + (1\u8722\'3f \u945\'3f)Q)i,i|\u8214\'3fP \u8722\'3fQ\u8214\'3f\u8734\'3f\line \u8804\'3f 2\u963\'3f\u8722\'3f1\u8214\'3fP \u8722\'3fQ\u8214\'3f\u8734\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+4.1 Tabular setting\line In general, the construction of provably computationally efficient approximate planning oracle for MDPs with\line large or continuous state spaces poses a challenge. Discounting limited settings (eg. the Linear Quadratic\line Regulators [Ber05], [FGKM18]), one may only appeal to the recent empirical successes of sample-based\line planning algorithms that rely on the power of non-linear function approximation.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Nevertheless, one may expect, and possibly require, that any solution proposed to address the general\line case performs reasonably when restricted to the tabular setting. In this spirit, we outline the construction of\line the required oracles in the tabular setting.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+4.1.1 The known MDP case}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+With the knowledge of the transition matrix P of a MDP M in the form of an explicit tensor, the planning\line oracle can be implemented via any of the exact solution methods [Ber05], eg. value iteration, linear\line programming. The state distribution oracle can be efficiently implemented as Lemma 3.2 suggests.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Corollary 4.4. When the MDP M is known explicitly, with the oracles described in Section 4, Algorithm 1\line runs in poly}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line \u946\'3f, |S|, |A|, 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8722\'3f\u947\'3f ,\line 1\line \u949\'3f , logB}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line time to guarantee R(d\u960\'3fmix,T}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+) \u8805\'3f max\u960\'3f R(d\u960\'3f)\u8722\'3f \u949\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+8}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+4.1.2 The unknown MDP case}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+For the case of an unknown MDP, a sample-based algorithm must iteratively try to learn about the MDP\line through its interactions with the environment. Here, we assume a \u947\'3f-discounted episodic setting, where the\line agent can act in the environment starting from s0 \u8764\'3f d0 for some number of steps, and is then able to reset.\line Our measure of sample complexity in this setting is the number of O\u771\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line (1\u8722\'3f \u947\'3f)\u8722\'3f1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line -length episodes the agent}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+must sample to achieve a \u949\'3f-suboptimal performance guarantee.\line The algorithm outlined below makes a distinction between the set of states it is (relatively) sure about}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+and the set of states that have not been visited enough number of times yet. The algorithm and the analysis\line is similar to the E3 algorithm [KS02]. Since algorithms like E3 proceed by building a relatively accurate\line model on the set of reachable states, as opposed to estimate of the value functions, this permits the reuse of\line information across different invocations, each of which might operate on a different reward signal.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Theorem 4.5. For an unknown MDP, with Algorithm 2 as the planning oracle and Algorithm 3 as the dis-\line tribution estimate oracle, Algorithm 1 runs in poly}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line \u946\'3f, |S|, |A|, 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8722\'3f\u947\'3f ,\line 1\line \u949\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line time and executes O\u771\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line B3|S|2|A|\line \u949\'3f3(1\u8722\'3f\u947\'3f)2 + \u946\'3f3}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u949\'3f3}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line episodes of length O\u771\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line log |S|\u949\'3f\u8722\'3f1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+log \u947\'3f\u8722\'3f1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line to guarantee that}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+R(d\u960\'3fmix,T\line ) \u8805\'3f max}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3f\line R(d\u960\'3f)\u8722\'3f \u949\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+A sub-optimality bound may be derived on the non-smooth entropy functional H via Lemma 4.3. Again,\line the extraneous factors introduced in the process are a consequence of the imposed smoothing via H\u963\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Corollary 4.6. For an unknown MDP, with Algorithm 2 as the planning oracle and Algorithm 3 as the\line distribution estimate oracle and H\u963\'3f as the proxy reward functional, Algorithm 1 runs in poly}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line |S|, |A|, 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8722\'3f\u947\'3f ,\line 1\line \u949\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line time and executes O\u771\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line |S|2|A|\line \u949\'3f3(1\u8722\'3f\u947\'3f)2 + |S|3}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u949\'3f6}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line episodes of length O\u771\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line log |S|\u949\'3f\u8722\'3f1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+log \u947\'3f\u8722\'3f1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line to guarantee that}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+H(d\u960\'3fmix,T\line ) \u8805\'3f max}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3f\line H(d\u960\'3f)\u8722\'3f \u949\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Before we state the proof, we note the following lemmas. The first is an adaptation of the analysis of the\line E3 algorithm. The second is standard. We only include the second for completeness. The proofs of these\line may be found in the appendix.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Lemma 4.7. For any reward function r with \u8214\'3fr\u8214\'3f\u8734\'3f \u8804\'3f B, \u949\'3f > 0, with \u949\'3f1 = 0.1B\u8722\'3f1\u949\'3f,m =\line 32B2|S| log}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2|S|\line \u948\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(1\u8722\'3f\u947\'3f)2(0.1\u949\'3f)2 , n =}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+B log\line 32|S|2|A| log 2|S|}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u948\'3f\line (1\u8722\'3f\u947\'3f)2(0.1\u949\'3f)2\u948\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+0.1\u949\'3f , t0 =\line log 0.1\u949\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+log |S|\line log \u947\'3f , Algorithm 4.5 guarantees with probability 1\u8722\'3f \u948\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+V\u960\'3f \u8805\'3f max\line \u960\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+V\u960\'3f \u8722\'3f \u949\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Furthermore, note that if Algorithm 4.5 is invoked T times (on possibly different reward functions), the total\line number of episodes sampled across all the invocations is n(T +m|S||A|) = O\u771\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\line BT\line \u949\'3f + B3|S|2|A|}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u949\'3f3(1\u8722\'3f\u947\'3f)2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+)\line , each episode}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+being of length t0.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Lemma 4.8. For any \u949\'3f0, \u948\'3f > 0, when Algorithm 3 is run with m = 200\line \u949\'3f20}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+log 2|S| log 0.1\u949\'3f\line \u948\'3f log \u947\'3f , t0 = log 0.1\u949\'3f0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+log \u947\'3f , d\u770\'3f\u960\'3f\line satisfies \u8214\'3fd\u770\'3f\u960\'3f \u8722\'3f d\u960\'3f\u8214\'3f\u8734\'3f \u8804\'3f \u949\'3f0 with probability at least 1\u8722\'3f \u948\'3f. In this process, the algorithm samples m episodes of\line length t0.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Proof of Theorem 4.5. The claim follows immediately from the invocations of the two lemmas above with\line the parameter settings proposed in Theorem 4.1.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The following notions & lemmas are helpful in proving Lemma 4.7. We shall call a state s \u8712\'3f K m-known if,\line for all actions a \u8712\'3f A, action a has been executed at state s at least m times. For any MDPM = (S,A, r, P, \u947\'3f)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+9}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+Algorithm 2 Sample-based planning for an unknown MDP.\line 1: Input: Reward r, error tolerance \u949\'3f > 0, exact planning oracle tolerance \u949\'3f1 > 0, oversampling parameter\line m, number of rollouts n, rollout length t0.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2: Initialize a persistent data structure C \u8712\'3f R|S|2\u215\'d7|A|, which is maintained across different calls to the\line planning algorithm to keep transition counts, to C(s\u8242\'27|s, a) = 0 for every (s\u8242\'27, s, a) \u8712\'3f S2 \u215\'d7A.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+3: repeat}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+4: Declare K = \{s : mina\u8712\'3fA\line \u8721\'3f\line s\u8242\'27\u8712\'3fS C(s\u8242\'27|s, a) \u8805\'3f m\}, P\u770\'3f (s\u8242\'27|s, a) =}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\{\line C(s\u8242\'27|s,a)\u8721\'3f\line s\u8242\'27\u8712\'3fS C(s\u8242\'27|s,a) , if s \u8712\'3f K}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1s\u8242\'27=s. otherwise.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+5: Define the reward function as rK(s) =\line \{\line r(s), if s \u8712\'3f K\line B. otherwise}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+6: Compute an (approximately) optimal policy on the MDP induced by P\u770\'3f and reward rK. This task is\line purely computational, and can be done as indicated in Section 4.1.1. Also, modify the policy so that\line on every state s \u8712\'3f S \u8722\'3f K, it chooses the least performed action.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u960\'3f(s) =\line \{}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(\u928\'3f (rK, \u949\'3f1))(s) if s \u8712\'3f K,\line argmina\u8712\'3fA}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8721\'3f}{\loch
+\line s\u8242\'27\u8712\'3fS C(s\u8242\'27|s, a) otherwise}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+7: Run \u960\'3f on the true MDP M to obtain n independently sampled t0-length trajectories (\u964\'3f1, . . . \u964\'3fn), and\line increment the corresponding counts in C(s\u8242\'27|s, a).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+8: If and only if no trajectory \u964\'3fi contains a state s \u8712\'3f S \u8722\'3f K, mark \u960\'3f as stable.\line 9: until \u960\'3f is stable.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+10: return \u960\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Algorithm 3 Sample-based estimate of the state distribution.\line 1: Input: A policy \u960\'3f, termination length t0, oversampling parameter m.\line 2: Sample m trajectories (\u964\'3f0, . . . \u964\'3fm\u8722\'3f1) of length t0 following the policy \u960\'3f.\line 3: For every t < t0, calculate the empirical state distribution d\u770\'3ft,\u960\'3f.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+dt,\u960\'3f(s) =\line |\{i < m : \u964\'3fi = (s0, a0, . . . ) with st = s\}|}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+m}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+4: return d\u770\'3f\u960\'3f = 1\u8722\'3f\u947\'3f\line 1\u8722\'3f\u947\'3ft0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8721\'3f}{\loch
+t0\u8722\'3f1\line t=0 \u947\'3ftd\u770\'3ft,\u960\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+and a set of m-known states K \u8838\'3f S, define an induced MDPMK = (S,A, rK, PK, \u947\'3f) so that the states absent\line from K are absorbing and maximally rewarding.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+rK(s, a) =\line \{\line r(s, a) if s \u8712\'3f K,\line B otherwise,}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(4.5)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+PK(s\u8242\'27|s, a) =\line \{\line P (s\u8242\'27|s, a) if s \u8712\'3f K,\line 1s\u8242\'27=s otherwise.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(4.6)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The state distribution induced by a policy \u960\'3f onMK shall be denoted by dMK,\u960\'3f. Often, in absence of an exact\line knowledge of the transition matrix P , the policy \u960\'3f may be executed on an estimated transition matrix P\u770\'3f .\line We shall use dM\u770\'3fK,\u960\'3f to denote the state distribution of the policy \u960\'3f executed on the MDP with the transition}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+10}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+matrix P\u770\'3f . Also, define the following.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+PK(escape|\u960\'3f) = E\line \u964\'3f\u8764\'3fP (\u183\'b7|\u960\'3f)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8707\'3ft<t0:st 6\u8712\'3fK,\u964\'3f=(s0,a0,... ),}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+PK,\u947\'3f(escape|\u960\'3f) = (1\u8722\'3f \u947\'3f) E\line \u964\'3f\u8764\'3fP (\u183\'b7|\u960\'3f)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8734\'3f\u8721\'3f}{\loch
+\line t=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u947\'3ft1 su\u8712\'3fK\u8704\'3fu<t and\line st 6\u8712\'3fK,\u964\'3f=(s0,a0,... )}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Note that PK(escape|\u960\'3f) \u8805\'3f PK,\u947\'3f(escape|\u960\'3f)\u8722\'3f \u947\'3ft0 .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Lemma 4.9. (Lemma 8.4.4[Kak03]) For any policy \u960\'3f, the following statements are valid.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\dbch
+\u12296\'3f}{\loch
+d\u960\'3f, r}{\dbch
+\u12297\'3f \u8805\'3f \u12296\'3f}{\loch
+dMK,\u960\'3f, rK}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+PK,\u947\'3f(escape|\u960\'3f)\u8214\'3frK\u8214\'3f\u8734\'3f,\line }{\dbch
+\u12296\'3f}{\loch
+dMK,\u960\'3f, rK}{\dbch
+\u12297\'3f \u8805\'3f \u12296\'3f}{\loch
+d\u960\'3f, r}{\dbch
+\u12297\'3f}{\loch
+.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Lemma 4.10. (Lemma 8.5.4[Kak03]) If, for all (s, a) \u8712\'3f S \u215\'d7A, \u8214\'3fP\u770\'3f (\u183\'b7|s, a)\u8722\'3f PK(\u183\'b7|s, a)\u8214\'3f1 \u8804\'3f \u949\'3f, then for any\line reward r, policy \u960\'3f, it is true that}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+|}{\dbch
+\u12296\'3f}{\loch
+dMK,\u960\'3f, r}{\dbch
+\u12297\'3f \u8722\'3f \u12296\'3f}{\loch
+dM\u770\'3fK,\u960\'3f, r}{\dbch
+\u12297\'3f}{\loch
+| \u8804\'3f\line \u949\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8722\'3f \u947\'3f\line Lemma 4.11. (Folklore, eg. Lemma 8.5.5[Kak03]) When m samples \{x1, . . . xm\} are drawn from a distri-\line bution P , supported on a domain of size d, to construct an empirical distribution P\u770\'3f (x) =}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8721\'3f}{\loch
+m\line i=1 1xi=x\line m , it is}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+guaranteed that with probability 1\u8722\'3f \u948\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8214\'3f}{\loch
+P \u8722\'3f P\u770\'3f\u8214\'3f1 \u8804\'3f\line \u8730\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+8d log 2d\line \u948\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+m\line .}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Proof of Lemma 4.7. The key observation in dealing with an unknown MDP is: either \u960\'3f, computed on the\line the transition P\u770\'3f , is (almost) optimal for the given reward signal on the true MDP, or it escapes the set of\line known states K quickly. If the former occurs, the requirement on the output of the algorithm is met. In case\line of the later, \u960\'3f serves as a good policy to quickly explore new states \u8211\'96 this can happen only a finite number of\line times.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Let \u960\'3f\u8727\'2a = arg max\u960\'3f V\u960\'3f. First, note that for any \u960\'3f chosen in the Line 6, we have}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+V\u960\'3f =}{\dbch
+\u12296\'3f}{\loch
+d\u960\'3f, r}{\dbch
+\u12297\'3f}{\loch
+\line \u8805\'3f}{\dbch
+\u12296\'3f}{\loch
+dMK,\u960\'3f, rK}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+(\u947\'3ft0 + PK(escape|\u960\'3f))B 4.9}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8805\'3f}{\dbch
+\u12296\'3f}{\loch
+dM\u770\'3fK,\u960\'3f, rK}{\dbch
+\u12297\'3f \u8722\'3f}{\loch
+\line 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8722\'3f \u947\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8730\'3f}{\loch
+\line 8|S| log 2|S|}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u948\'3f\line m}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8722\'3f }{\loch
+(\u947\'3ft0 + PK(escape|\u960\'3f))B 4.10, 4.11}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8805\'3f}{\dbch
+\u12296\'3f}{\loch
+dM\u770\'3fK,\u960\'3f\u8727\'2a , rK}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+\u949\'3f1 \u8722\'3f\line 1}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8722\'3f \u947\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8730\'3f}{\loch
+\line 8|S| log 2|S|}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u948\'3f\line m}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8722\'3f }{\loch
+(\u947\'3ft0 + PK(escape|\u960\'3f))B choice of \u960\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8805\'3f}{\dbch
+\u12296\'3f}{\loch
+dMK,\u960\'3f\u8727\'2a , rK}{\dbch
+\u12297\'3f \u8722\'3f }{\loch
+\u949\'3f1 \u8722\'3f\line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8722\'3f \u947\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8730\'3f}{\loch
+\line 8|S| log 2|S|}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u948\'3f\line m}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8722\'3f }{\loch
+(\u947\'3ft0 + PK(escape|\u960\'3f))B 4.10, 4.11}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8805\'3f}{\loch
+V\u960\'3f\u8727\'2a \u8722\'3f \u949\'3f1 \u8722\'3f\line 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+1\u8722\'3f \u947\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8730\'3f}{\loch
+\line 8|S| log 2|S|}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u948\'3f\line m}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8722\'3f }{\loch
+(\u947\'3ft0 + PK(escape|\u960\'3f))B 4.9}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+If PK(escape|\u960\'3f) > \u8710\'3f, then the probability that \u960\'3f doesn\u8217\'92t escape K in n trials is e\u8722\'3fn\u8710\'3f. Accounting\line for the failure probabilities with a suitable union bound, Line 8 ensures that \u960\'3f is marked stable only if\line PK(escape|\u960\'3f) \u8804\'3f log(N\u948\'3f\u8722\'3f1)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+n , where N is the total number of times the inner loop is executed.\line To observe the truth of the second part of the claim, note that every reiteration of the inner loop coincides}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+with the exploration of some action at a m-unknown state. There can be at most m|S||A| such exploration\line steps. Finally, each run of the inner loop samples n episodes.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+11}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+MountainCar Pendulum Ant}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(a) (b) (c)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(d) (e)\line (f)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Figure 2: Results of the preliminary experiments. In each plot, blue represents the MaxEnt agent, and orange\line represents the random baseline. 2a, 2b, and 2c show the entropy of the policy evolving with the number of\line epochs. 2d, 2e, and 2f show the log-probability of occupancy of the two-dimensional state space. In 2f, the\line infinite xy grid is limited to [\u8722\'3f20, 20]\u215\'d7 [\u8722\'3f20, 20].}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Proof of Lemma 4.8. First note that it suffices to ensure for all t < t0 simultaneously, it happens \u8214\'3fdt,\u960\'3f \u8722\'3f\line d\u770\'3ft,\u960\'3f\u8214\'3f\u8734\'3f \u8804\'3f 0.1\u949\'3f0. This is because}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8214\'3f}{\loch
+d\u960\'3f \u8722\'3f d\u770\'3f\u960\'3f\u8214\'3f\u8734\'3f \u8804\'3f\line 1\u8722\'3f \u947\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+(1\u8722\'3f \u947\'3ft0)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+t0\u8722\'3f1\u8721\'3f\line t=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u947\'3ft\u8214\'3fd\u770\'3ft,\u960\'3f \u8722\'3f (1\u8722\'3f \u947\'3ft0)dt,\u960\'3f\u8214\'3f\u8734\'3f + \u947\'3ft0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{
+\u8804\'3f }{\loch
+1\u8722\'3f \u947\'3f\line (1\u8722\'3f \u947\'3ft0)}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+t0\u8722\'3f1\u8721\'3f\line t=0}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u947\'3ft\u8214\'3fd\u770\'3ft,\u960\'3f \u8722\'3f dt,\u960\'3f\u8214\'3f+ 0.3\u949\'3f0 \u8804\'3f \u949\'3f0.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Since the trajectories are independently, |d\u770\'3ft,\u960\'3f(s)\u8722\'3f dt,\u960\'3f(s)| \u8804\'3f\line \u8730\'3f}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2\line m log 2}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+\u948\'3f for each t < t0 and state s \u8712\'3f S with\line probability 1\u8722\'3f \u948\'3f, by Hoeffding\u8217\'92s inequality. A union bound over states and t concludes the proof.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+5 Proof of Concept Experiments\line We report the results from a preliminary set of experiments2. In each case, the MaxEnt agent learns to access\line the set of reachable states within a small number of iterations, while monotonically increasing the entropy of\line the induced state distribution.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Recall that Algorithm 1 requires access to an approximate planning oracle and a density estimator\line for the induced distribution. Here the density estimator is deliberately chosen to be simple \u8211\'96 a count-\line based estimate over the discretized state space. It is possible to use neural density estimators and other\line function-approximation based estimators in its stead.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+2The open-source implementations may be found at https://github.com/abbyvansoest/maxent_base and https://github.\line com/abbyvansoest/maxent_ant.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+12}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+Figure 3: The number of distinct xy states visited by Ant at various epochs. Results were averaged over\line N = 20 executions. As the number of policies in the mixture increases, the agent reaches more unique states\line in the same amount of time.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+5.1 Environments and the discretization procedure\line The 2-dimensional state spaces for MountainCar and Pendulum (from [BCP+16]) were discretized evenly to\line grids of size 10\u215\'d7 9 and 8\u215\'d7 8, respectively. For Pendulum, the maximum torque and velocity were capped at\line 1.0 and 7.0, respectively.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+The 29-dimensional state space for Ant (with a Mujoco engine) was first reduced to dimension 7, combining\line the agent\u8217\'92s x and y location in the gridspace with a 5-dimensional random projection of the remaining 27\line states. The x and y dimensions were discretized into 16 bins in the range [\u8722\'3f12, 12]. The other dimensions\line were each normalized and discretized into 15 bins in the range [\u8722\'3f1, 1]. While the planning agent agent had\line access to the full state representation, the density estimation was performed exclusively on the reduced\line representation.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+5.2 Algorithmic details\line Reward function. Each planning agent was trained to maximize a KL divergence objective function, ie.\line KL(Unif||d\u960\'3f).}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+MountainCar and Pendulum. The planning oracle is a REINFORCE [SMSM00] agent, where the the\line output policy from the previous iteration is used as the initial policy for the next iteration. The policy class is\line a neural net with a single hidden layer consisting of 128 units. The agent is trained on 400 and 200 episodes\line every epoch for MountainCar and Pendulum, respectively. The baseline agent chooses its action randomly at\line every time step.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Ant. The planning oracle is a Soft Actor-Critic [HZAL18] agent. The policy class is a neural net with 2\line hidden layers composed of 300 units and the ReLU activation function. The agent is trained for 30 episodes,\line each of which consists of a roll-out of 5000 steps. The mixed policy is executed over 10 trials of T = 10000\line steps at the end of each epoch in order to approximate the policy distribution and compute the next reward\line function. The baseline agent chooses its actions randomly for the same number of trials and steps.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+Acknowledgements\line Sham Kakade acknowledges funding from the Washington Research Foundation for Innovation in Data-\line intensive Discovery, the DARPA award FA8650-18-2-7836, and the ONR award N00014-18-1-2247. The\line authors thank Shie Mannor for helpful discussions.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+13}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+References\line [AN04] Pieter Abbeel and Andrew Y. Ng. Apprenticeship learning via inverse reinforcement learning.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+In ICML, 2004.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[AOM17] Mohammad Gheshlaghi Azar, Ian Osband, and Re\u769\'3fmi Munos. Minimax regret bounds for\line reinforcement learning. arXiv preprint arXiv:1703.05449, 2017.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[B+15] Se\u769\'3fbastien Bubeck et al. Convex optimization: Algorithms and complexity. Foundations and\line Trends in Machine Learning, 8(3-4):231\u8211\'96357, 2015.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[BCP+16] Greg Brockman, Vicki Cheung, Ludwig Pettersson, Jonas Schneider, John Schulman, Jie Tang,\line and Wojciech Zaremba. Openai gym. arXiv preprint arXiv:1606.01540, 2016.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[BEP+18] Yuri Burda, Harri Edwards, Deepak Pathak, Amos Storkey, Trevor Darrell, and Alexei A.\line Efros. Large-scale study of curiosity-driven learning. In arXiv:1808.04355, 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[Ber05] Dimitri P Bertsekas. Dynamic programming and optimal control, volume 1. Athena Scientific,\line 2005.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[BESK18] Yuri Burda, Harrison Edwards, Amos Storkey, and Oleg Klimov. Exploration by random\line network distillation. arXiv preprint arXiv:1810.12894, 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[BSO+16] Marc G. Bellemare, Sriram Srinivasan, Georg Ostrovski, Tom Schaul, David Saxton, and Re\u769\'3fmi\line Munos. Unifying count-based exploration and intrinsic motivation. In Advances in Neural\line Information Processing Systems 29: Annual Conference on Neural Information Processing\line Systems 2016, December 5-10, 2016, Barcelona, Spain, pages 1471\u8211\'961479, 2016.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[CBS05] Nuttapong Chentanez, Andrew G. Barto, and Satinder P. Singh. Intrinsically motivated\line reinforcement learning. In L. K. Saul, Y. Weiss, and L. Bottou, editors, Advances in Neural\line Information Processing Systems 17, pages 1281\u8211\'961288. MIT Press, 2005.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[DB15] Christoph Dann and Emma Brunskill. Sample complexity of episodic fixed-horizon reinforce-\line ment learning. In Advances in Neural Information Processing Systems, pages 2818\u8211\'962826,\line 2015.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[DFVR03] Daniela Pucci De Farias and Benjamin Van Roy. The linear programming approach to\line approximate dynamic programming. Operations research, 51(6):850\u8211\'96865, 2003.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[FCRL17] Justin Fu, John Co-Reyes, and Sergey Levine. Ex2: Exploration with exemplar models for\line deep reinforcement learning. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus,\line S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems\line 30, pages 2577\u8211\'962587. Curran Associates, Inc., 2017.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[FGKM18] Maryam Fazel, Rong Ge, Sham Kakade, and Mehran Mesbahi. Global convergence of policy\line gradient methods for the linear quadratic regulator. In International Conference on Machine\line Learning, pages 1466\u8211\'961475, 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[FW56] Marguerite Frank and Philip Wolfe. An algorithm for quadratic programming. Naval Research\line Logistics (NRL), 3(1-2):95\u8211\'96110, 1956.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[HCC+16] Rein Houthooft, Xi Chen, Xi Chen, Yan Duan, John Schulman, Filip De Turck, and Pieter\line Abbeel. Vime: Variational information maximizing exploration. In D. D. Lee, M. Sugiyama,\line U. V. Luxburg, I. Guyon, and R. Garnett, editors, Advances in Neural Information Processing\line Systems 29, pages 1109\u8211\'961117. Curran Associates, Inc., 2016.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+14}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+[HZAL18] Tuomas Haarnoja, Aurick Zhou, Pieter Abbeel, and Sergey Levine. Soft actor-critic: Off-policy\line maximum entropy deep reinforcement learning with a stochastic actor. CoRR, abs/1801.01290,\line 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[Kae93] Leslie Pack Kaelbling. Learning to achieve goals. In Proceedings of the Thirteenth International\line Joint Conference on Artificial Intelligence, Chambery, France, 1993. Morgan Kaufmann.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[Kak03] Sham Machandranath Kakade. On the sample complexity of reinforcement learning. PhD\line thesis, University of London London, England, 2003.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[KS02] Michael Kearns and Satinder Singh. Near-optimal reinforcement learning in polynomial time.\line Machine learning, 49(2-3):209\u8211\'96232, 2002.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[LH14] Tor Lattimore and Marcus Hutter. Near-optimal pac bounds for discounted mdps. Theoretical\line Computer Science, 558:125\u8211\'96143, 2014.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[LLTyO12] Manuel Lopes, Tobias Lang, Marc Toussaint, and Pierre yves Oudeyer. Exploration in model-\line based reinforcement learning by empirically estimating learning progress. In F. Pereira, C. J. C.\line Burges, L. Bottou, and K. Q. Weinberger, editors, Advances in Neural Information Processing\line Systems 25, pages 206\u8211\'96214. Curran Associates, Inc., 2012.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[MJR15] Shakir Mohamed and Danilo Jimenez Rezende. Variational information maximisation for\line intrinsically motivated reinforcement learning. In C. Cortes, N. D. Lawrence, D. D. Lee,\line M. Sugiyama, and R. Garnett, editors, Advances in Neural Information Processing Systems 28,\line pages 2125\u8211\'962133. Curran Associates, Inc., 2015.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[MKS+15] Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A Rusu, Joel Veness, Marc G\line Bellemare, Alex Graves, Martin Riedmiller, Andreas K Fidjeland, Georg Ostrovski, et al.\line Human-level control through deep reinforcement learning. Nature, 518(7540):529, 2015.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[NHR99] Andrew Y. Ng, Daishi Harada, and Stuart J. Russell. Policy invariance under reward transfor-\line mations: Theory and application to reward shaping. In ICML, 1999.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[NPD+18] Ashvin Nair, Vitchyr Pong, Murtaza Dalal, Shikhar Bahl, Steven Lin, and Sergey Levine.\line Visual reinforcement learning with imagined goals. CoRR, abs/1807.04742, 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[OAC18] Ian Osband, John Aslanides, and Albin Cassirer. Randomized prior functions for deep\line reinforcement learning. In S. Bengio, H. Wallach, H. Larochelle, K. Grauman, N. Cesa-\line Bianchi, and R. Garnett, editors, Advances in Neural Information Processing Systems 31,\line pages 8625\u8211\'968637. Curran Associates, Inc., 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[OBPVR16] Ian Osband, Charles Blundell, Alexander Pritzel, and Benjamin Van Roy. Deep exploration\line via bootstrapped dqn. In D. D. Lee, M. Sugiyama, U. V. Luxburg, I. Guyon, and R. Garnett,\line editors, Advances in Neural Information Processing Systems 29, pages 4026\u8211\'964034. Curran\line Associates, Inc., 2016.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[OBvdOM17] Georg Ostrovski, Marc G. Bellemare, Aa\u776\'3fron van den Oord, and Re\u769\'3fmi Munos. Count-based\line exploration with neural density models. In Proceedings of the 34th International Conference on\line Machine Learning, ICML 2017, Sydney, NSW, Australia, 6-11 August 2017, pages 2721\u8211\'962730,\line 2017.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[PAED17] Deepak Pathak, Pulkit Agrawal, Alexei A. Efros, and Trevor Darrell. Curiosity-driven explo-\line ration by self-supervised prediction. In ICML, 2017.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[Put14] Martin L Puterman. Markov decision processes: discrete stochastic dynamic programming.\line John Wiley & Sons, 2014.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+15}
+\par \pard\plain \s21\loch\sb0\sa283\ql\fi0\li0\lin0\ri0\rin0\ltrpar{\loch
+[RGB11] Ste\u769\'3fphane Ross, Geoffrey J. Gordon, and J. Andrew Bagnell. A reduction of imitation learning\line and structured prediction to no-regret online learning. In AISTATS, 2011.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[SHM+16] David Silver, Aja Huang, Chris J Maddison, Arthur Guez, Laurent Sifre, George Van Den Driess-\line che, Julian Schrittwieser, Ioannis Antonoglou, Veda Panneershelvam, Marc Lanctot, et al.\line Mastering the game of go with deep neural networks and tree search. nature, 529(7587):484,\line 2016.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[SLB09] Satinder Singh, Richard L. Lewis, and Andrew G. Barto. Where do rewards come from?\line Proceedings of the Annual Conference of the Cognitive Science Society (CogSci), 2009.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[SLBS10] Satinder P. Singh, Richard L. Lewis, Andrew G. Barto, and Jonathan Sorg. Intrinsically moti-\line vated reinforcement learning: An evolutionary perspective. IEEE Transactions on Autonomous\line Mental Development, 2:70\u8211\'9682, 2010.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[SLW+06] Alexander L Strehl, Lihong Li, Eric Wiewiora, John Langford, and Michael L Littman. Pac\line model-free reinforcement learning. In Proceedings of the 23rd international conference on\line Machine learning, pages 881\u8211\'96888. ACM, 2006.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[SMSM00] Richard S Sutton, David A McAllester, Satinder P Singh, and Yishay Mansour. Policy gradient\line methods for reinforcement learning with function approximation. In Advances in neural\line information processing systems, pages 1057\u8211\'961063, 2000.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[SRM+18] Nikolay Savinov, Anton Raichuk, Raphae\u776\'3fl Marinier, Damien Vincent, Marc Pollefeys, Tim-\line othy P. Lillicrap, and Sylvain Gelly. Episodic curiosity through reachability. CoRR,\line abs/1810.02274, 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[SS10] Istva\u769\'3fn Szita and Csaba Szepesva\u769\'3fri. Model-based reinforcement learning with nearly tight\line exploration complexity bounds. In Proceedings of the 27th International Conference on Machine\line Learning (ICML-10), pages 1031\u8211\'961038, 2010.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[THF+17] Haoran Tang, Rein Houthooft, Davis Foote, Adam Stooke, OpenAI Xi Chen, Yan Duan, John\line Schulman, Filip DeTurck, and Pieter Abbeel. #exploration: A study of count-based exploration\line for deep reinforcement learning. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus,\line S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems\line 30, pages 2753\u8211\'962762. Curran Associates, Inc., 2017.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[WdWK+18] David Warde-Farley, Tom Van de Wiele, Tejas Kulkarni, Catalin Ionescu, Steven Hansen, and\line Volodymyr Mnih. Unsupervised control through non-parametric discriminative rewards. CoRR,\line abs/1811.11359, 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[WRR+17] The\u769\'3fophane Weber, Se\u769\'3fbastien Racanie\u768\'3fre, David P Reichert, Lars Buesing, Arthur Guez,\line Danilo Jimenez Rezende, Adria Puigdomenech Badia, Oriol Vinyals, Nicolas Heess, Yujia\line Li, et al. Imagination-augmented agents for deep reinforcement learning. arXiv preprint\line arXiv:1707.06203, 2017.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+[ZOS18] Zeyu Zheng, Junhyuk Oh, and Satinder Singh. On learning intrinsic rewards for policy gradient\line methods. CoRR, abs/1804.06459, 2018.}
+\par \pard\plain \s21\loch\sb0\sa283\ql\sb0\sa283\ltrpar{\loch
+16}
+\par }
