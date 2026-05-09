@@ -1,10 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <WasmNativeBuild>true</WasmNativeBuild>
+    <!-- WASM0001: sqlite3_config uses C varargs which are unsupported in WASM.
+         EF Core never calls sqlite3_config at runtime so this is safe to suppress. -->
+    <NoWarn>$(NoWarn);WASM0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +19,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MaxEnt.Logic\MaxEnt.Logic.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="maxent-original-paper-1812.02690v2.pdf">
+      <LogicalName>maxent_paper.pdf</LogicalName>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -4,4 +4,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<AppItem> AppItems => Set<AppItem>();
     public DbSet<ExperimentLog> ExperimentLogs => Set<ExperimentLog>();
+    public DbSet<ExperimentGraph> ExperimentGraphs => Set<ExperimentGraph>();
 }

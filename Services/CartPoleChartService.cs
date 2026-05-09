@@ -320,7 +320,8 @@ namespace MyMaxEntV01.Services
                     FileName = filePath,
                     UseShellExecute = true
                 };
-                Process.Start(psi);
+                if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() || OperatingSystem.IsLinux())
+                    Process.Start(psi);
             }
             catch (Exception ex)
             {

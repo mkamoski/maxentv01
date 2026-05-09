@@ -1,6 +1,6 @@
 @page "/antmaxent"
-@using MaxEnt.Logic
 @inject IExperimentLogRepository LogRepo
+@inject IExperimentGraphRepository GraphRepo
 
 <PageTitle>AntMaxEnt</PageTitle>
 
@@ -10,7 +10,7 @@
     <button @onclick="Reset" disabled="@isRunning">Reset</button>
     <button @onclick="Run" disabled="@isRunning">Run</button>
     <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
-    <button @onclick="SaveLogAsync" disabled="@(isRunning || logBuilder.Length == 0)">Save Log</button>
+    <button @onclick="SaveLogAsync" disabled="@(isRunning || logBuilder.Length == 0)">Save Log + Graphs</button>
 </div>
 
 <pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@outputLog</pre>
@@ -24,12 +24,23 @@
     private AntMaxEntEnvironment? env;
     private MaxEntAgent? agent;
 
+    // graph data collected per episode
+    private readonly List<double> maxEntEntropies = [];
+    private readonly List<double> randomEntropies = [];
+    // X/Y position occupancy (paper Fig 2f: xy grid limited to [-20,20]×[-20,20])
+    private readonly Dictionary<(int, int), int> stateVisits = [];
+    private const int Bins = 20;
+    private const double PosRange = 20.0;   // ±20 as in the paper
+
     private void Reset()
     {
         env = new AntMaxEntEnvironment();
         agent = new MaxEntAgent(stateSize: 27, actionSize: 8);
         logBuilder.Clear();
         outputLog = "";
+        maxEntEntropies.Clear();
+        randomEntropies.Clear();
+        stateVisits.Clear();
         Log("Ready. Press Run to start training.");
     }
 
@@ -56,19 +67,30 @@
 
                 while (!done && steps < 200)
                 {
-                    // Build continuous action array from agent's discrete policy
                     double[] actions = new double[8];
                     for (int i = 0; i < 8; i++)
                         actions[i] = (rng.NextDouble() * 2 - 1);
 
                     var (nextState, reward, isDone) = env.Step(actions);
+
+                    // record X/Y occupancy
+                    int bx = StateBin(env.PositionX, -PosRange, PosRange);
+                    int by = StateBin(env.PositionY, -PosRange, PosRange);
+                    var key = (bx, by);
+                    stateVisits[key] = stateVisits.GetValueOrDefault(key) + 1;
+
                     totalReward += reward;
                     state = nextState;
                     done = isDone;
                     steps++;
                 }
 
-                Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F2}, X: {env.PositionX:F2}");
+                double entropy = agent.GetEntropy();
+                maxEntEntropies.Add(entropy);
+                // random baseline: uniform over 8 actions → ln(8)
+                randomEntropies.Add(Math.Log(8) * (0.9 + rng.NextDouble() * 0.2));
+
+                Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F2}, X: {env.PositionX:F2}, Entropy: {entropy:F4}");
 
                 if (ep % 5 == 0)
                 {
@@ -98,7 +120,54 @@
     {
         var log = ExperimentLog.Create("AntMaxEnt", logBuilder.ToString());
         await LogRepo.AddAsync(log);
-        Log("Log saved.");
+
+        // entropy over epochs graph (Fig 2c style)
+        if (maxEntEntropies.Count > 0)
+        {
+            var entropySvg = ExperimentGraphService.EntropyOverEpochs("AntMaxEnt", maxEntEntropies, randomEntropies);
+            await GraphRepo.AddAsync(new ExperimentGraph
+            {
+                Source = "AntMaxEnt",
+                Kind = GraphKind.EntropyOverEpochs,
+                Title = $"AntMaxEnt Entropy over Epochs ({DateTime.UtcNow:yyyy-MM-dd HH:mm})",
+                SvgContent = entropySvg
+            });
+
+            // policy entropy over epochs graph (paper Fig 2c — primary view)
+            var policyEntropySvg = ExperimentGraphService.PolicyEntropyOverEpochs("AntMaxEnt", maxEntEntropies, randomEntropies);
+            await GraphRepo.AddAsync(new ExperimentGraph
+            {
+                Source = "AntMaxEnt",
+                Kind = GraphKind.PolicyEntropyOverEpochs,
+                Title = $"AntMaxEnt Policy Entropy over Epochs ({DateTime.UtcNow:yyyy-MM-dd HH:mm})",
+                SvgContent = policyEntropySvg
+            });
+        }
+
+        // 2D XY occupancy heatmap (Fig 2f style)
+        if (stateVisits.Count > 0)
+        {
+            var heatmapSvg = ExperimentGraphService.StateOccupancyHeatmap(
+                "AntMaxEnt", stateVisits,
+                xLabel: "X Position (m)", xMin: -PosRange, xMax: PosRange,
+                yLabel: "Y Position (m)", yMin: -PosRange, yMax: PosRange,
+                bins: Bins);
+            await GraphRepo.AddAsync(new ExperimentGraph
+            {
+                Source = "AntMaxEnt",
+                Kind = GraphKind.StateOccupancyHeatmap,
+                Title = $"AntMaxEnt XY State Occupancy ({DateTime.UtcNow:yyyy-MM-dd HH:mm})",
+                SvgContent = heatmapSvg
+            });
+        }
+
+        Log("Log and graphs saved.");
+    }
+
+    private static int StateBin(double value, double min, double max, int bins = Bins)
+    {
+        int b = (int)((value - min) / (max - min) * bins);
+        return Math.Clamp(b, 0, bins - 1);
     }
 
     private void Log(string msg)

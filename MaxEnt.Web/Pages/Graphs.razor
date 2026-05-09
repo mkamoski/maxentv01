@@ -1,0 +1,80 @@
+@page "/graphs"
+@inject IExperimentGraphRepository GraphRepo
+@inject IFileDownloadService FileDownload
+
+<PageTitle>Experiment Graphs</PageTitle>
+
+<h2>Experiment Graphs</h2>
+
+<button @onclick="RefreshAsync">Refresh</button>
+
+@if (_graphs.Count == 0)
+{
+    <p>No graphs saved yet. Run an experiment and click Save Log + Graphs.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Source</th>
+                <th>Type</th>
+                <th>Saved (UTC)</th>
+                <th>Title</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var g in _graphs)
+            {
+                <tr>
+                    <td>@g.Source</td>
+                    <td>@g.Kind</td>
+                    <td>@g.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@g.Title</td>
+                    <td>
+                        <button @onclick="() => ToggleView(g.Id)">
+                            @(_visibleId == g.Id ? "Hide" : "View")
+                        </button>
+                        <button @onclick="() => DownloadAsync(g)">Download SVG</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_visibleId is not null)
+{
+    var graph = _graphs.FirstOrDefault(g => g.Id == _visibleId);
+    if (graph is not null)
+    {
+        <hr />
+        <h3>@graph.Title</h3>
+        <div style="overflow-x:auto;border:1px solid #ddd;padding:8px;background:#fff;">
+            @((MarkupString)graph.SvgContent)
+        </div>
+    }
+}
+
+@code {
+    private List<ExperimentGraph> _graphs = [];
+    private Guid? _visibleId;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _graphs = await GraphRepo.GetAllAsync();
+        _visibleId = null;
+    }
+
+    private void ToggleView(Guid id) =>
+        _visibleId = _visibleId == id ? null : id;
+
+    private async Task DownloadAsync(ExperimentGraph graph)
+    {
+        var fileName = $"{graph.Source}_{graph.Kind}_{graph.CreatedAt:yyyyMMdd_HHmmss}.svg";
+        await FileDownload.DownloadTextAsync(graph.SvgContent, fileName);
+    }
+}
