@@ -25,6 +25,7 @@ builder.Services.AddSingleton<IExperimentLogRepository, ExperimentLogRepository>
 builder.Services.AddSingleton<IExperimentGraphRepository, ExperimentGraphRepository>();
 builder.Services.AddSingleton<IFileDownloadService, BlazorFileDownloadService>();
 builder.Services.AddSingleton<IMaxEntArtifactManager, MaxEntArtifactManager>();
+builder.Services.AddSingleton<IExperimentRunnerState, ExperimentRunnerState>();
 
 var host = builder.Build();
 

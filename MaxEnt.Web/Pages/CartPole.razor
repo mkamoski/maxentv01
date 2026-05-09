@@ -1,14 +1,26 @@
 @page "/cartpole"
 @inject IExperimentLogRepository LogRepo
 @inject IExperimentGraphRepository GraphRepo
+@inject IExperimentRunnerState RunnerState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
 
 <PageTitle>CartPole</PageTitle>
 
 <h1>CartPole - Maximum Entropy RL</h1>
 
+@if (RunnerState.IsRunning && RunnerState.ActiveSource != "CartPole")
+{
+    <div style="background:#fff3cd;border:1px solid #ffc107;padding:10px;margin-bottom:8px;border-radius:4px;">
+        ⚠️ Cannot start — <strong>@RunnerState.ActiveSource</strong> experiment is currently running.
+        Stop it before starting CartPole.
+    </div>
+}
+
 <div>
-    <button @onclick="Reset" disabled="@isRunning">Reset</button>
-    <button @onclick="Run" disabled="@isRunning">Run</button>
+    <button @onclick="Reset" disabled="@(isRunning || IsBlockedByOther)">Reset</button>
+    <button @onclick="Run" disabled="@(isRunning || IsBlockedByOther)">Run</button>
     <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
     <button @onclick="SaveLogAsync" disabled="@(isRunning || logBuilder.Length == 0)">Save Log + Graphs</button>
 </div>
@@ -17,9 +29,12 @@
 
 @code {
     private bool isRunning;
+    private bool IsBlockedByOther => RunnerState.IsRunning && RunnerState.ActiveSource != "CartPole";
     private string outputLog = "";
     private System.Text.StringBuilder logBuilder = new();
     private CancellationTokenSource? cts;
+    private IDisposable? _navHandler;
+    private Guid? _currentLogId;   // set when Run begins, used to mark Completed
 
     private CartPoleEnvironment? env;
     private MaxEntAgent? agent;
@@ -45,12 +60,43 @@
         Log("Ready. Press Run to start training.");
     }
 
+    protected override void OnInitialized()
+    {
+        _navHandler = Nav.RegisterLocationChangingHandler(OnLocationChangingAsync);
+    }
+
+    private async ValueTask OnLocationChangingAsync(LocationChangingContext ctx)
+    {
+        if (!isRunning) return;
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Navigating away will stop this experiment and mark the log as incomplete. Continue?");
+        if (confirmed)
+        {
+            cts?.Cancel();
+        }
+        else
+        {
+            ctx.PreventNavigation();
+        }
+    }
+
+    public void Dispose() => _navHandler?.Dispose();
+
     private async Task Run()
     {
-        if (isRunning) return;
+        if (isRunning || IsBlockedByOther) return;
         isRunning = true;
+        RunnerState.Start("CartPole");
         cts = new CancellationTokenSource();
+        _currentLogId = null;
 
+        // Create an incomplete log entry immediately so it persists even if cancelled
+        var runLog = ExperimentLog.Create("CartPole", "");
+        _currentLogId = runLog.Id;
+        await LogRepo.AddAsync(runLog);
+
+        bool completedCleanly = false;
         try
         {
             env ??= new CartPoleEnvironment();
@@ -97,7 +143,8 @@
                 }
             }
 
-            Log("Training complete.");
+            completedCleanly = !cts.Token.IsCancellationRequested;
+            Log(completedCleanly ? "Training complete." : "Stopped.");
         }
         catch (OperationCanceledException)
         {
@@ -105,6 +152,14 @@
         }
         finally
         {
+            if (_currentLogId.HasValue)
+            {
+                await LogRepo.UpdateContentAsync(_currentLogId.Value, logBuilder.ToString());
+                if (completedCleanly)
+                    await LogRepo.MarkCompletedAsync(_currentLogId.Value);
+            }
+
+            RunnerState.Stop();
             isRunning = false;
             cts?.Dispose();
             cts = null;
@@ -116,8 +171,7 @@
 
     private async Task SaveLogAsync()
     {
-        var log = ExperimentLog.Create("CartPole", logBuilder.ToString());
-        await LogRepo.AddAsync(log);
+        // Log entry already created at run-start; just persist the graphs.
 
         // entropy over epochs graph (Fig 2a style)
         if (maxEntEntropies.Count > 0)
@@ -159,7 +213,7 @@
             });
         }
 
-        Log("Log and graphs saved.");
+        Log("Graphs saved.");
     }
 
     private static int StateBin(double value, double min, double max, int bins = Bins)

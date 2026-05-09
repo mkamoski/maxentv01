@@ -272,6 +272,158 @@ Generates training charts using ScottPlot, consistent with the paper's Figure 2:
 * Key references include REINFORCE [SMSM00] and Soft Actor-Critic [HZAL18].
 * References cover foundational and recent works in reinforcement learning, policy optimization, inverse reinforcement learning, regret bounds, and deep RL techniques.
 
+# Experiment Runner
+
+## Why it's designed this way
+
+Blazor WebAssembly is **single-threaded**. There is no background worker, no server, and no state recovery after a tab closes or refreshes. The design accepts this honestly:
+
+- Only **one experiment runs at a time** — enforced globally, not per-page.
+- A run **lives and dies with the browser tab**. Navigating away or refreshing stops it.
+- Every run is **immediately persisted** as an incomplete log the moment it starts. A log is only promoted to complete when the training loop exits cleanly.
+
+This model is simple, honest, and safe. There are no hidden partial states.
+
+---
+
+## 1. Execution Model
+
+| Aspect | Detail |
+|---|---|
+| Platform | Blazor WebAssembly (.NET 10) |
+| Threading | Single-threaded; one experiment at a time, globally enforced |
+| Lifecycle | Full stop on tab close/refresh — no recovery needed or attempted |
+| Cancellation | `CancellationTokenSource` per run; cancelled by user, timeout, or navigation |
+| Hard timeout | `CancellationTokenSource(TimeSpan.FromHours(N))`, configurable per experiment |
+
+---
+
+## 2. Single-Experiment Constraint
+
+**Why:** WASM runs on the browser's main thread. Running two experiments concurrently would block the UI and produce corrupted logs.
+
+**How:** A singleton `IExperimentRunnerState` service is registered in `Program.cs` and shared across all pages.
+
+```csharp
+// Services/IExperimentRunnerState.cs
+public interface IExperimentRunnerState
+{
+    bool IsRunning { get; }
+    string? ActiveSource { get; }   // "CartPole" or "AntMaxEnt"
+    void Start(string source);
+    void Stop();
+}
+```
+
+`Start(source)` is called the moment **Run** is clicked. `Stop()` is called in the `finally` block of every run method — so it fires whether the run finishes cleanly, times out, or is cancelled.
+
+**UI enforcement:** On page init, each experiment page checks `RunnerState.IsRunning`. If another experiment is already active, the Run button is disabled and a warning banner appears:
+
+> *Cannot start — CartPole experiment is currently running. Stop it before starting this one.*
+
+---
+
+## 3. Navigation Guard
+
+**Why:** If a user clicks away mid-run, the experiment must be stopped and the log must stay marked as incomplete — silently abandoning a run would leave a corrupted record.
+
+**How:** Each experiment page implements `IDisposable` and registers a location-changing handler on init:
+
+```csharp
+NavigationManager.RegisterLocationChangingHandler(OnLocationChangingAsync);
+```
+
+When navigation is attempted while a run is active, a browser confirm dialog fires:
+
+> *Navigating away will stop this experiment and mark the log as incomplete. Continue?*
+
+- **Confirmed:** `cts.Cancel()` + `RunnerState.Stop()` → navigation proceeds.
+- **Cancelled:** navigation is blocked; the run continues.
+
+The handler is unregistered in `Dispose()`.
+
+---
+
+## 4. Run Lifecycle & Log Status
+
+**Why:** A log created only at the end of a run would be lost if the user navigates away or the tab closes mid-run. Creating it at the start and marking it complete at the end guarantees a record always exists.
+
+**Flow:**
+
+```
+Run clicked
+  → RunnerState.Start("CartPole")
+  → ExperimentLog created with Status = Incomplete  ← persisted immediately
+  → Training loop runs ...
+      (user may cancel, navigate away, or timeout)
+  → finally: RunnerState.Stop()
+  → if completed cleanly: LogRepo.MarkCompletedAsync(logId)
+```
+
+**`ExperimentRunStatus` enum:**
+
+```csharp
+public enum ExperimentRunStatus { Incomplete, Completed }
+```
+
+`ExperimentLog.Status` defaults to `Incomplete` on `Create(...)`. It is set to `Completed` only when the training loop exits without cancellation.
+
+**Repository surface:**
+
+```csharp
+Task MarkCompletedAsync(Guid id);
+```
+
+---
+
+## 5. Incomplete Log Badge
+
+On the **Logs** and **Experiment Results** pages, any log whose `Status == Incomplete` shows a small red badge:
+
+> <span style="background:#dc3545;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;">Incomplete</span>
+
+This lets users immediately see which runs were interrupted or abandoned.
+
+---
+
+## 6. Data Management (SQLite in-memory)
+
+| Aspect | Detail |
+|---|---|
+| Storage engine | SQLite via `Microsoft.Data.Sqlite`, in-memory connection held open for the tab lifetime |
+| EF Core context | Singleton `AppDbContext`; schema created with `EnsureCreatedAsync()` on startup |
+| Logs | Rolling table; max 10 entries pruned on `AddAsync` |
+| Graphs | SVG content stored as text per run (`ExperimentGraph` entity) |
+| Persistence scope | Tab lifetime only — data is lost on refresh by design |
+
+**Why in-memory and not OPFS?** The experiment lifecycle ends when the tab closes. Persisting to OPFS would add complexity with no user benefit — the user sees results immediately after a run, and completed logs/graphs are available for download before they leave the page.
+
+---
+
+## 7. Anti-Throttling
+
+The **Screen Wake Lock API** (`navigator.wakeLock`) is requested via JS interop when a run starts and released when it stops. This prevents the browser from throttling the WASM runtime when the tab is in the background.
+
+---
+
+## 8. UI Design
+
+- **Pulse line:** Only the most recent log line is shown live during a run to keep DOM overhead minimal.
+- **Full log:** Retrieved on-demand when the user opens the Logs or Results page.
+- **Graphs:** Generated in SVG after a run completes, stored in SQLite, and rendered on the Results page.
+
+---
+
+## 9. Technical Stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | .NET 10 / Blazor WebAssembly |
+| Language | C# 13, file-scoped namespaces, records, primary constructors |
+| Persistence | EF Core 10 + `Microsoft.Data.Sqlite` (in-memory) |
+| UI | Razor components, Bootstrap |
+| Principles | SOLID · DRY · YAGNI |
+
 ---
 
 # References
