@@ -1,0 +1,242 @@
+/* ============================================================
+   MaxEnt — Site Theme
+   Font    : Consolas (monospace, web-safe)
+   Sizes   : 14pt large | 12pt medium (base) | 10pt small
+   Colors  : high-contrast, colorblind-safe, web-safe named
+   ============================================================ */
+
+/* --- Reset & base ----------------------------------------- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 10pt;            /* medium — base for all rem */
+}
+
+body {
+    font-family: Consolas, "Courier New", Courier, monospace;
+    font-size: 1rem;            /* 12pt medium */
+    background-color: white;
+    color: black;
+    line-height: 1.6;
+    padding: 1rem 2rem 2rem 2rem;
+}
+
+/* --- Typography scale ------------------------------------- */
+h1 {
+    font-size: 1.2rem;          /* 12pt large */
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: black;
+}
+
+h2 {
+    font-size: 1.2rem;          /* 12pt large */
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: black;
+}
+
+h3, h4, h5, h6 {
+    font-size: 1rem;            /* 12pt medium */
+    font-weight: bold;
+    margin-bottom: 0.4rem;
+    color: black;
+}
+
+p, li, td, th, label, span, pre, code {
+    font-size: 1rem;            /* 12pt medium */
+    font-family: Consolas, "Courier New", Courier, monospace;
+}
+
+small, .text-small {
+    font-size: 0.833rem;        /* ~10pt small */
+}
+
+/* --- Links ------------------------------------------------ */
+a {
+    color: navy;
+    text-decoration: underline;
+}
+
+a:hover, a:focus {
+    color: black;
+    text-decoration: underline;
+}
+
+a:visited {
+    color: purple;
+}
+
+/* --- Nav bar ---------------------------------------------- */
+nav {
+    background-color: black;
+    padding: 0.5rem 1rem;
+    margin: -1rem -2rem 1.5rem -2rem;  /* bleed to body edges */
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;            /* 12pt medium */
+    font-weight: bold;
+}
+
+nav a:hover, nav a:focus {
+    color: yellow;
+    text-decoration: underline;
+}
+
+nav a:visited {
+    color: white;
+}
+
+/* --- Flat buttons ----------------------------------------- */
+button, input[type="button"], input[type="submit"] {
+    font-family: Consolas, "Courier New", Courier, monospace;
+    font-size: 1rem;            /* 12pt medium */
+    background-color: navy;
+    color: white;
+    border: none;
+    padding: 0.3rem 0.85rem;
+    cursor: pointer;
+}
+
+button:hover, button:focus,
+input[type="button"]:hover, input[type="submit"]:hover {
+    background-color: black;
+    color: white;
+    outline: 2px solid yellow;
+    outline-offset: 1px;
+}
+
+button:disabled,
+input[type="button"]:disabled {
+    background-color: gray;
+    color: white;
+    cursor: not-allowed;
+    outline: none;
+}
+
+/* --- Tables ----------------------------------------------- */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+th {
+    background-color: black;
+    color: white;
+    text-align: left;
+    padding: 0.35rem 0.6rem;
+    font-size: 1rem;            /* 10pt small — header label */
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+td {
+    padding: 0.3rem 0.6rem;
+    border-bottom: 1px solid silver;
+    vertical-align: middle;
+}
+
+tr:nth-child(even) td {
+    background-color: whitesmoke;
+}
+
+tr:hover td {
+    background-color: lightyellow;
+}
+
+/* --- Home vertical nav list ------------------------------- */
+ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 1rem 0;
+}
+
+ul li {
+    padding: 0.2rem 0;
+    border-bottom: 1px solid silver;
+}
+
+ul li:last-child {
+    border-bottom: none;
+}
+
+ul li a {
+    font-size: 1rem;            /* 12pt medium */
+    font-weight: bold;
+    display: block;
+    padding: 0.25rem 0.4rem;
+    color: navy;
+    text-decoration: none;
+}
+
+ul li a:hover, ul li a:focus {
+    background-color: navy;
+    color: white;
+    text-decoration: none;
+}
+
+/* --- Code / pre blocks ------------------------------------ */
+pre {
+    background-color: whitesmoke;
+    color: black;
+    border: 1px solid silver;
+    padding: 0.75rem 1rem;
+    overflow: auto;
+    font-size: 1rem;            /* 10pt small */
+    line-height: 1.5;
+}
+
+code {
+    background-color: whitesmoke;
+    padding: 0 0.2rem;
+    font-size: 1rem;            /* 10pt small */
+}
+
+/* --- Inputs
+input[type="text"], input[type="number"], select, textarea {
+    font-family: Consolas, "Courier New", Courier, monospace;
+    font-size: 1rem;
+    border: 1px solid gray;
+    padding: 0.25rem 0.4rem;
+    background-color: white;
+    color: black;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: 2px solid navy;
+    outline-offset: 1px;
+}
+
+/* --- Inline badge (Incomplete status) --------------------- */
+.badge-incomplete {
+    background-color: maroon;
+    color: white;
+    font-size: 1rem;            /* 10pt small */
+    padding: 1px 5px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+/* --- Utility ---------------------------------------------- */
+.text-large  { font-size: 1.2rem; }     /* 12pt */
+.text-medium { font-size: 1rem; }       /* 10pt */
+.text-small  { font-size: 1rem; }       /* 10pt */
+
+.muted { color: gray; }
+
+/* --- Blazor error UI override ----------------------------- */
+#blazor-error-ui {
+    background-color: maroon;
+    color: white;
+    font-family: Consolas, "Courier New", Courier, monospace;
+    font-size: 1rem;
+}

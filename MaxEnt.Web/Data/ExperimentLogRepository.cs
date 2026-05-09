@@ -7,7 +7,7 @@ public class ExperimentLogRepository(AppDbContext db) : IExperimentLogRepository
     public Task<List<ExperimentLogSummary>> GetSummariesAsync() =>
         db.ExperimentLogs
           .OrderByDescending(l => l.CreatedAt)
-          .Select(l => new ExperimentLogSummary(l.Id, l.Source, l.CreatedAt, l.Summary))
+          .Select(l => new ExperimentLogSummary(l.Id, l.Source, l.CreatedAt, l.Summary, l.Status))
           .ToListAsync();
 
     public Task<ExperimentLog?> GetByIdAsync(Guid id) =>
@@ -17,6 +17,31 @@ public class ExperimentLogRepository(AppDbContext db) : IExperimentLogRepository
     {
         await PruneAsync();
         db.ExperimentLogs.Add(log);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task MarkCompletedAsync(Guid id)
+    {
+        var log = await db.ExperimentLogs.FindAsync(id);
+        if (log is null) return;
+        log.Status = ExperimentRunStatus.Completed;
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpdateContentAsync(Guid id, string fullText)
+    {
+        var log = await db.ExperimentLogs.FindAsync(id);
+        if (log is null) return;
+
+        var truncated = fullText.Length > ExperimentLog.MaxContentLength
+            ? fullText[^ExperimentLog.MaxContentLength..]
+            : fullText;
+
+        log.Content = truncated;
+        log.Summary = truncated.TrimEnd()
+                               .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                               .LastOrDefault()?.Trim() ?? "";
+
         await db.SaveChangesAsync();
     }
 

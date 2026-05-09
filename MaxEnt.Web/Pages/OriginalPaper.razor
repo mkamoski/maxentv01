@@ -1,0 +1,110 @@
+@page "/original-paper"
+@inject IJSRuntime JS
+
+<h2>Original Paper</h2>
+<p>
+    Hazan, E., Kakade, S. M., Singh, K., &amp; Van Soest, A. (2019).<br />
+    <em>Provably Efficient Maximum Entropy Exploration.</em> arXiv:1812.02690v2.
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Format</th>
+            <th>Size</th>
+            <th></th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var f in _files)
+        {
+            <tr>
+                <td>@f.Label</td>
+                <td>@f.Size</td>
+                <td>
+                    @if (f.CanView)
+                    {
+                        <button @onclick="() => View(f)">View</button>
+                    }
+                    else
+                    {
+                        <span style="color:#999;font-size:12px;">—</span>
+                    }
+                </td>
+                <td>
+                    <a href="@f.Url" download="@f.FileName">Download</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (_viewing != null)
+{
+    <div style="margin-top:1.5rem;">
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
+            <strong>Viewing: @_viewing.Label</strong>
+            <a href="@_viewing.Url" target="_blank" rel="noopener">Open in new tab ↗</a>
+            <button @onclick="CloseViewer">✕ Close</button>
+        </div>
+
+        @if (_viewing.ViewKind == ViewKind.Pdf)
+        {
+            <object data="@_viewing.Url" type="application/pdf" style="width:100%;height:80vh;border:1px solid #ccc;">
+                <p style="padding:1rem;">
+                    Your browser could not display the PDF inline.
+                    <a href="@_viewing.Url" target="_blank" rel="noopener">Open PDF in a new tab</a>
+                    or use the <strong>Download</strong> link above.
+                </p>
+            </object>
+        }
+        else if (_viewing.ViewKind == ViewKind.Html)
+        {
+            <iframe src="@_viewing.Url" style="width:100%;height:80vh;border:1px solid #ccc;" title="@_viewing.Label" sandbox="allow-same-origin"></iframe>
+        }
+        else if (_viewing.ViewKind == ViewKind.Text)
+        {
+            <pre style="max-height:75vh;overflow:auto;background:#f6f6f6;padding:1rem;border:1px solid #ccc;font-size:13px;white-space:pre-wrap;">@_textContent</pre>
+        }
+    </div>
+}
+
+@code {
+    private PaperFile? _viewing;
+    private string? _textContent;
+
+    private static readonly PaperFile[] _files =
+    [
+        new("PDF",  "maxent-original-paper-1812.02690v2.pdf",  "~812 KB", ViewKind.Pdf,  CanView: true),
+        new("HTML", "maxent-original-paper-1812.02690v2.html", "~57 KB",  ViewKind.Html, CanView: true),
+        new("TXT",  "maxent-original-paper-1812.02690v2.txt",  "~44 KB",  ViewKind.Text, CanView: true),
+        new("DOCX", "maxent-original-paper-1812.02690v2.docx", "~448 KB", ViewKind.None, CanView: false),
+        new("RTF",  "maxent-original-paper-1812.02690v2.rtf",  "~85 KB",  ViewKind.None, CanView: false),
+    ];
+
+    private async Task View(PaperFile f)
+    {
+        _viewing = f;
+        _textContent = null;
+
+        if (f.ViewKind == ViewKind.Text)
+        {
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./file-download.js");
+            _textContent = await module.InvokeAsync<string>("fetchText", f.Url);
+        }
+    }
+
+    private void CloseViewer()
+    {
+        _viewing = null;
+        _textContent = null;
+    }
+
+    private enum ViewKind { None, Pdf, Html, Text }
+
+    private sealed record PaperFile(string Label, string FileName, string Size, ViewKind ViewKind, bool CanView)
+    {
+        public string Url => $"papers/{FileName}";
+    }
+}
