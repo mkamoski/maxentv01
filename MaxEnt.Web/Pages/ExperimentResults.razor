@@ -1,6 +1,7 @@
 @page "/experiment-results"
 @inject IExperimentLogRepository LogRepo
 @inject IFileDownloadService FileDownload
+@inject IJSRuntime JS
 
 <h2>Experiment Results</h2>
 
@@ -16,7 +17,7 @@ else
         <thead>
             <tr>
                 <th>Source</th>
-                <th>Saved (UTC)</th>
+                <th>Saved</th>
                 <th>Summary</th>
                 <th></th>
             </tr>
@@ -26,7 +27,7 @@ else
             {
                 <tr>
                         <td>@s.Source</td>
-                        <td>@s.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@Local(s.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss")</td>
                         <td>
                             @s.Summary
                             @if (s.Status == ExperimentRunStatus.Incomplete)
@@ -47,7 +48,7 @@ else
 @if (_selected is not null)
 {
     <hr />
-    <h3>@_selected.Source — @_selected.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC</h3>
+    <h3>@_selected.Source — @Local(_selected.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss")</h3>
     <pre style="height:400px;overflow-y:auto;background:#111;color:#0f0;padding:8px;white-space:pre-wrap;">@_selected.Content</pre>
     <button @onclick="() => _selected = null">Close</button>
 }
@@ -55,8 +56,16 @@ else
 @code {
     private List<ExperimentLogSummary> _summaries = [];
     private ExperimentLog? _selected;
+    private int _offsetMinutes;
 
-    protected override async Task OnInitializedAsync() => await RefreshAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        var module = await JS.InvokeAsync<IJSObjectReference>("import", "./file-download.js");
+        _offsetMinutes = await module.InvokeAsync<int>("getBrowserUtcOffsetMinutes");
+        await RefreshAsync();
+    }
+
+    private DateTime Local(DateTime utc) => utc.AddMinutes(_offsetMinutes);
 
     private async Task RefreshAsync()
     {
@@ -71,7 +80,8 @@ else
     {
         var log = await LogRepo.GetByIdAsync(id);
         if (log is null) return;
-        var fileName = $"{source}_{createdAt:yyyyMMdd_HHmmss}.txt";
+        var localTime = Local(createdAt);
+        var fileName = $"{source}_{localTime:yyyyMMdd_HHmmss}.txt";
         await FileDownload.DownloadTextAsync(log.Content, fileName);
     }
 }

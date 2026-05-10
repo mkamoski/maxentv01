@@ -1,3 +1,7 @@
+export function getBrowserUtcOffsetMinutes() {
+    return -new Date().getTimezoneOffset();
+}
+
 export async function fetchText(url) {
     const r = await fetch(url);
     if (!r.ok) throw new Error(`Failed to fetch ${url}: ${r.status}`);
