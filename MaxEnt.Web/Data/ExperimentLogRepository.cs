@@ -33,6 +33,8 @@ public class ExperimentLogRepository(AppDbContext db) : IExperimentLogRepository
         var log = await db.ExperimentLogs.FindAsync(id);
         if (log is null) return;
 
+        fullText = ExperimentLog.TrimRows(fullText);
+
         var truncated = fullText.Length > ExperimentLog.MaxContentLength
             ? fullText[^ExperimentLog.MaxContentLength..]
             : fullText;

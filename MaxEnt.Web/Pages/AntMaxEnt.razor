@@ -22,7 +22,6 @@
     <button @onclick="Reset" disabled="@(isRunning || IsBlockedByOther)">Reset</button>
     <button @onclick="Run" disabled="@(isRunning || IsBlockedByOther)">Run</button>
     <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
-    <button @onclick="SaveLogAsync" disabled="@(isRunning || logBuilder.Length == 0)">Save Log + Graphs</button>
 </div>
 
 <pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@outputLog</pre>
@@ -161,6 +160,8 @@
                     await LogRepo.MarkCompletedAsync(_currentLogId.Value);
             }
 
+            await SaveGraphsAsync();
+
             RunnerState.Stop();
             isRunning = false;
             cts?.Dispose();
@@ -171,10 +172,8 @@
 
     private void Stop() => cts?.Cancel();
 
-    private async Task SaveLogAsync()
+    private async Task SaveGraphsAsync()
     {
-        // Log entry already created at run-start; just persist the graphs.
-
         // entropy over epochs graph (Fig 2c style)
         if (maxEntEntropies.Count > 0)
         {

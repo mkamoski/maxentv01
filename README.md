@@ -392,11 +392,22 @@ This lets users immediately see which runs were interrupted or abandoned.
 |---|---|
 | Storage engine | SQLite via `Microsoft.Data.Sqlite`, in-memory connection held open for the tab lifetime |
 | EF Core context | Singleton `AppDbContext`; schema created with `EnsureCreatedAsync()` on startup |
-| Logs | Rolling table; max 10 entries pruned on `AddAsync` |
+| Logs | Rolling table; max 10 entries pruned on `AddAsync`; content capped at 2 000 lines per entry (trimmed to last 1 000 when exceeded) |
 | Graphs | SVG content stored as text per run (`ExperimentGraph` entity) |
 | Persistence scope | Tab lifetime only — data is lost on refresh by design |
 
 **Why in-memory and not OPFS?** The experiment lifecycle ends when the tab closes. Persisting to OPFS would add complexity with no user benefit — the user sees results immediately after a run, and completed logs/graphs are available for download before they leave the page.
+
+### Log content trimming
+
+Each log entry stores its output as a plain-text blob. To prevent unbounded memory growth during long training runs:
+
+| Threshold | Action |
+|---|---|
+| Content rows ≤ 2 000 | Stored as-is |
+| Content rows > 2 000 | Oldest lines discarded; last **1 000 lines** kept, then new content appended |
+
+Trimming is applied on every write — both when a log entry is first created (`ExperimentLog.Create`) and on every incremental update (`ExperimentLogRepository.UpdateContentAsync`). The character-length cap (`MaxContentLength = 55 000`) is enforced after the row trim as a secondary safety net.
 
 ---
 
