@@ -1,10 +1,5 @@
 @page "/antmaxent"
-@inject IExperimentLogRepository LogRepo
-@inject IExperimentGraphRepository GraphRepo
-@inject IExperimentRunnerState RunnerState
-@inject NavigationManager Nav
-@inject IJSRuntime JS
-@implements IDisposable
+@inherits ExperimentPageBase
 
 <PageTitle>AntMaxEnt</PageTitle>
 
@@ -24,21 +19,28 @@
     <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
 </div>
 
+<div style="margin:6px 0;">
+    <strong>Timeout (hours):</strong>
+    @foreach (var h in TimeoutOptions)
+    {
+        <label style="margin-left:12px;">
+            <input type="radio" name="ant-timeout" value="@h"
+                   checked="@(timeoutHours == h)"
+                   @onchange="@(() => timeoutHours = h)"
+                   disabled="@isRunning" />
+            @h
+        </label>
+    }
+</div>
+
 <pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@outputLog</pre>
 
 @code {
-    private bool isRunning;
-    private bool IsBlockedByOther => RunnerState.IsRunning && RunnerState.ActiveSource != "AntMaxEnt";
-    private string outputLog = "";
-    private System.Text.StringBuilder logBuilder = new();
-    private CancellationTokenSource? cts;
-    private IDisposable? _navHandler;
-    private Guid? _currentLogId;
+    protected override string Source => "AntMaxEnt";
 
     private AntMaxEntEnvironment? env;
     private MaxEntAgent? agent;
 
-    // graph data collected per episode
     private readonly List<double> maxEntEntropies = [];
     private readonly List<double> randomEntropies = [];
     // X/Y position occupancy (paper Fig 2f: xy grid limited to [-20,20]×[-20,20])
@@ -58,121 +60,55 @@
         Log("Ready. Press Run to start training.");
     }
 
-    protected override void OnInitialized()
+    protected override async Task RunEpisodesAsync(CancellationToken ct)
     {
-        _navHandler = Nav.RegisterLocationChangingHandler(OnLocationChangingAsync);
-    }
+        env ??= new AntMaxEntEnvironment();
+        agent ??= new MaxEntAgent(stateSize: 27, actionSize: 8);
+        var rng = new Random();
+        int episodes = 100;
 
-    private async ValueTask OnLocationChangingAsync(LocationChangingContext ctx)
-    {
-        if (!isRunning) return;
-        var confirmed = await JS.InvokeAsync<bool>(
-            "confirm",
-            "Navigating away will stop this experiment and mark the log as incomplete. Continue?");
-        if (confirmed)
+        for (int ep = 1; ep <= episodes && !ct.IsCancellationRequested; ep++)
         {
-            cts?.Cancel();
-        }
-        else
-        {
-            ctx.PreventNavigation();
-        }
-    }
+            double[] state = env.Reset();
+            double totalReward = 0;
+            bool done = false;
+            int steps = 0;
 
-    public void Dispose() => _navHandler?.Dispose();
-
-    private async Task Run()
-    {
-        if (isRunning || IsBlockedByOther) return;
-        isRunning = true;
-        RunnerState.Start("AntMaxEnt");
-        cts = new CancellationTokenSource();
-        _currentLogId = null;
-
-        // Create an incomplete log entry immediately so it persists even if cancelled
-        var runLog = ExperimentLog.Create("AntMaxEnt", "");
-        _currentLogId = runLog.Id;
-        await LogRepo.AddAsync(runLog);
-
-        bool completedCleanly = false;
-        try
-        {
-            env ??= new AntMaxEntEnvironment();
-            agent ??= new MaxEntAgent(stateSize: 27, actionSize: 8);
-
-            var rng = new Random();
-            int episodes = 100;
-
-            for (int ep = 1; ep <= episodes && !cts.Token.IsCancellationRequested; ep++)
+            while (!done && steps < 200)
             {
-                double[] state = env.Reset();
-                double totalReward = 0;
-                bool done = false;
-                int steps = 0;
+                double[] actions = new double[8];
+                for (int i = 0; i < 8; i++)
+                    actions[i] = (rng.NextDouble() * 2 - 1);
 
-                while (!done && steps < 200)
-                {
-                    double[] actions = new double[8];
-                    for (int i = 0; i < 8; i++)
-                        actions[i] = (rng.NextDouble() * 2 - 1);
+                var (nextState, reward, isDone) = env.Step(actions);
 
-                    var (nextState, reward, isDone) = env.Step(actions);
+                int bx = StateBin(env.PositionX, -PosRange, PosRange, Bins);
+                int by = StateBin(env.PositionY, -PosRange, PosRange, Bins);
+                var key = (bx, by);
+                stateVisits[key] = stateVisits.GetValueOrDefault(key) + 1;
 
-                    // record X/Y occupancy
-                    int bx = StateBin(env.PositionX, -PosRange, PosRange);
-                    int by = StateBin(env.PositionY, -PosRange, PosRange);
-                    var key = (bx, by);
-                    stateVisits[key] = stateVisits.GetValueOrDefault(key) + 1;
-
-                    totalReward += reward;
-                    state = nextState;
-                    done = isDone;
-                    steps++;
-                }
-
-                double entropy = agent.GetEntropy();
-                maxEntEntropies.Add(entropy);
-                // random baseline: uniform over 8 actions → ln(8)
-                randomEntropies.Add(Math.Log(8) * (0.9 + rng.NextDouble() * 0.2));
-
-                Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F2}, X: {env.PositionX:F2}, Entropy: {entropy:F4}");
-
-                if (ep % 5 == 0)
-                {
-                    StateHasChanged();
-                    await Task.Delay(1, cts.Token);
-                }
+                totalReward += reward;
+                state = nextState;
+                done = isDone;
+                steps++;
             }
 
-            completedCleanly = !cts.Token.IsCancellationRequested;
-            Log(completedCleanly ? "Training complete." : "Stopped.");
-        }
-        catch (OperationCanceledException)
-        {
-            Log("Stopped.");
-        }
-        finally
-        {
-            if (_currentLogId.HasValue)
+            double entropy = agent.GetEntropy();
+            maxEntEntropies.Add(entropy);
+            // random baseline: uniform over 8 actions → ln(8)
+            randomEntropies.Add(Math.Log(8) * (0.9 + rng.NextDouble() * 0.2));
+
+            Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F2}, X: {env.PositionX:F2}, Entropy: {entropy:F4}");
+
+            if (ep % 5 == 0)
             {
-                await LogRepo.UpdateContentAsync(_currentLogId.Value, logBuilder.ToString());
-                if (completedCleanly)
-                    await LogRepo.MarkCompletedAsync(_currentLogId.Value);
+                StateHasChanged();
+                await Task.Delay(1, ct);
             }
-
-            await SaveGraphsAsync();
-
-            RunnerState.Stop();
-            isRunning = false;
-            cts?.Dispose();
-            cts = null;
-            StateHasChanged();
         }
     }
 
-    private void Stop() => cts?.Cancel();
-
-    private async Task SaveGraphsAsync()
+    protected override async Task SaveGraphsAsync()
     {
         // entropy over epochs graph (Fig 2c style)
         if (maxEntEntropies.Count > 0)
@@ -216,16 +152,5 @@
 
         Log("Graphs saved.");
     }
-
-    private static int StateBin(double value, double min, double max, int bins = Bins)
-    {
-        int b = (int)((value - min) / (max - min) * bins);
-        return Math.Clamp(b, 0, bins - 1);
-    }
-
-    private void Log(string msg)
-    {
-        logBuilder.AppendLine(msg);
-        outputLog = logBuilder.ToString();
-    }
 }
+
