@@ -111,7 +111,23 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
 
     protected void Log(string msg)
     {
-        logBuilder.AppendLine(msg);
+        logBuilder.AppendLine($"time: {DateTime.Now:o} {msg}");
         outputLog = logBuilder.ToString();
+    }
+
+    /// <summary>
+    /// While running, shows only the last 5 log lines to keep the output area compact.
+    /// After the run completes, returns the full log.
+    /// </summary>
+    protected string LiveLog
+    {
+        get
+        {
+            if (!isRunning) return outputLog;
+            var lines = outputLog.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            return lines.Length <= 5
+                ? outputLog
+                : string.Join('\n', lines[^5..]);
+        }
     }
 }

@@ -33,7 +33,7 @@
     }
 </div>
 
-<pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@outputLog</pre>
+<pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@LiveLog</pre>
 
 @code {
     protected override string Source => "AntMaxEnt";
@@ -57,7 +57,6 @@
         maxEntEntropies.Clear();
         randomEntropies.Clear();
         stateVisits.Clear();
-        Log("Ready. Press Run to start training.");
     }
 
     protected override async Task RunEpisodesAsync(CancellationToken ct)

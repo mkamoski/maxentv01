@@ -81,7 +81,8 @@ else
         var log = await LogRepo.GetByIdAsync(id);
         if (log is null) return;
         var localTime = Local(createdAt);
-        var fileName = $"{source}_{localTime:yyyyMMdd_HHmmss}.txt";
+        var shortSource = source.Replace("MaxEnt", string.Empty);
+        var fileName = $"MaxEnt_{shortSource}_{localTime:yyyy_MM_dd_HHmm_ss_fffff}.csv";
         await FileDownload.DownloadTextAsync(log.Content, fileName);
     }
 }
