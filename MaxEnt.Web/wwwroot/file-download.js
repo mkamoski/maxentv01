@@ -1,3 +1,20 @@
+// Keeps the screen awake while an experiment is running via the Wake Lock API.
+let _wakeLock = null;
+
+export async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        _wakeLock = await navigator.wakeLock.request('screen');
+    } catch (_) { /* permission denied or unsupported – silently ignore */ }
+}
+
+export async function releaseWakeLock() {
+    if (_wakeLock) {
+        try { await _wakeLock.release(); } catch (_) { }
+        _wakeLock = null;
+    }
+}
+
 export function getBrowserUtcOffsetMinutes() {
     return -new Date().getTimezoneOffset();
 }

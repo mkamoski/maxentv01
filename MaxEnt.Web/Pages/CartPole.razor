@@ -33,6 +33,15 @@
     }
 </div>
 
+<div style="margin:4px 0;font-size:0.85em;color:#555;display:flex;gap:24px;">
+    <span><strong>Started:</strong> @experimentStartedAt.ToString("o")</span>
+    <span><strong>Finished:</strong> @experimentFinishedAt.ToString("o")</span>
+    <span><strong>Elapsed:</strong> @experimentElapsed.ToString(@"hh\:mm\:ss\.fff")</span>
+</div>
+
+<div style="font-size:0.8em;font-family:monospace;color:#555;margin-top:8px;margin-bottom:2px;">
+    <strong>Columns:</strong> @OutputColumns
+</div>
 <pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@LiveLog</pre>
 
 @code {
@@ -52,8 +61,7 @@
     {
         env = new CartPoleEnvironment();
         agent = new MaxEntAgent(stateSize: 4, actionSize: 2);
-        logBuilder.Clear();
-        outputLog = "";
+        ClearRunStats();
         maxEntEntropies.Clear();
         randomEntropies.Clear();
         stateVisits.Clear();
@@ -94,7 +102,7 @@
             maxEntEntropies.Add(entropy);
             randomEntropies.Add(Math.Log(2) * (0.9 + rng.NextDouble() * 0.2));
 
-            Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F1}, Entropy: {entropy:F4}");
+            LogCsv(ep, episodes, steps, totalReward, entropy);
 
             if (ep % 10 == 0)
             {
@@ -144,8 +152,6 @@
                 SvgContent = heatmapSvg
             });
         }
-
-        Log("Graphs saved.");
     }
 }
 

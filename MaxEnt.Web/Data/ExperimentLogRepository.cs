@@ -7,7 +7,8 @@ public class ExperimentLogRepository(AppDbContext db) : IExperimentLogRepository
     public Task<List<ExperimentLogSummary>> GetSummariesAsync() =>
         db.ExperimentLogs
           .OrderByDescending(l => l.CreatedAt)
-          .Select(l => new ExperimentLogSummary(l.Id, l.Source, l.CreatedAt, l.Summary, l.Status))
+          .Select(l => new ExperimentLogSummary(l.Id, l.Source, l.CreatedAt, l.Summary, l.Status,
+              l.StartedTime, l.FinishedTime, l.RowCount))
           .ToListAsync();
 
     public Task<ExperimentLog?> GetByIdAsync(Guid id) =>
@@ -40,9 +41,10 @@ public class ExperimentLogRepository(AppDbContext db) : IExperimentLogRepository
             : fullText;
 
         log.Content = truncated;
-        log.Summary = truncated.TrimEnd()
-                               .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                               .LastOrDefault()?.Trim() ?? "";
+        log.Summary = ExperimentLog.ExtractFirstRowTime(truncated);
+        log.StartedTime = ExperimentLog.ExtractFirstRowTime(truncated);
+        log.FinishedTime = ExperimentLog.ExtractLastRowTime(truncated);
+        log.RowCount = ExperimentLog.CountDataRows(truncated);
 
         await db.SaveChangesAsync();
     }

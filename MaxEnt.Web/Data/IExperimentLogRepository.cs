@@ -18,4 +18,5 @@ public interface IExperimentLogRepository
 }
 
 /// <summary>Lightweight projection used in list views — avoids loading Content blobs.</summary>
-public record ExperimentLogSummary(Guid Id, string Source, DateTime CreatedAt, string Summary, ExperimentRunStatus Status);
+public record ExperimentLogSummary(Guid Id, string Source, DateTime CreatedAt, string Summary, ExperimentRunStatus Status,
+    string StartedTime, string FinishedTime, int RowCount);
