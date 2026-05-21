@@ -194,22 +194,19 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
     /// </summary>
     protected void LogCsv(int episodeCount, int episodeTotal, int steps, double reward, double entropy)
     {
-        long ticks = TicksHelper.NextTicks();
-        long seq = System.Threading.Interlocked.Increment(ref _globalSequence);
-        string time = HighResTimestamp();
-        string id = Guid.NewGuid().ToString();
-        string runId = (_currentLogId ?? Guid.Empty).ToString();
-        logBuilder.AppendLine($"{runId},{id},{time},{ticks},{seq},{episodeCount},{episodeTotal},{steps},{reward},{entropy}");
+        logBuilder.AppendLine($"time: {DateTime.Now:o} {msg}");
         outputLog = logBuilder.ToString();
     }
 
     /// <summary>
-    /// Always shows only the last 5 log lines to keep the output area compact.
+    /// While running, shows only the last 5 log lines to keep the output area compact.
+    /// After the run completes, returns the full log.
     /// </summary>
     protected string LiveLog
     {
         get
         {
+            if (!isRunning) return outputLog;
             var lines = outputLog.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             return lines.Length <= 5
                 ? outputLog
