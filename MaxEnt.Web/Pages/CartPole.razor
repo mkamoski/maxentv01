@@ -52,8 +52,7 @@
     {
         env = new CartPoleEnvironment();
         agent = new MaxEntAgent(stateSize: 4, actionSize: 2);
-        logBuilder.Clear();
-        outputLog = "";
+        ClearRunStats();
         maxEntEntropies.Clear();
         randomEntropies.Clear();
         stateVisits.Clear();
@@ -94,7 +93,7 @@
             maxEntEntropies.Add(entropy);
             randomEntropies.Add(Math.Log(2) * (0.9 + rng.NextDouble() * 0.2));
 
-            Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F1}, Entropy: {entropy:F4}");
+            LogCsv(ep, episodes, steps, totalReward, entropy);
 
             if (ep % 10 == 0)
             {
@@ -144,8 +143,6 @@
                 SvgContent = heatmapSvg
             });
         }
-
-        Log("Graphs saved.");
     }
 }
 

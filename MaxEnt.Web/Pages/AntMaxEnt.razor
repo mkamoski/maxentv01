@@ -52,8 +52,7 @@
     {
         env = new AntMaxEntEnvironment();
         agent = new MaxEntAgent(stateSize: 27, actionSize: 8);
-        logBuilder.Clear();
-        outputLog = "";
+        ClearRunStats();
         maxEntEntropies.Clear();
         randomEntropies.Clear();
         stateVisits.Clear();
@@ -97,7 +96,7 @@
             // random baseline: uniform over 8 actions → ln(8)
             randomEntropies.Add(Math.Log(8) * (0.9 + rng.NextDouble() * 0.2));
 
-            Log($"Episode {ep}/{episodes} - Steps: {steps}, Reward: {totalReward:F2}, X: {env.PositionX:F2}, Entropy: {entropy:F4}");
+            LogCsv(ep, episodes, steps, totalReward, entropy);
 
             if (ep % 5 == 0)
             {
@@ -148,8 +147,6 @@
                 SvgContent = heatmapSvg
             });
         }
-
-        Log("Graphs saved.");
     }
 }
 

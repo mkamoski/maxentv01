@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using System.Text;
+using MaxEnt.Web.Helpers;
 
 namespace MaxEnt.Web.Pages;
 
@@ -28,10 +29,51 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
     protected string outputLog = "";
     protected StringBuilder logBuilder = new();
     protected int timeoutHours = 2;
+    protected DateTime experimentStartedAt = DateTime.MinValue;
+    protected DateTime experimentFinishedAt = DateTime.MinValue;
+    protected TimeSpan experimentElapsed = TimeSpan.Zero;
 
     private CancellationTokenSource? cts;
     private IDisposable? _navHandler;
     private Guid? _currentLogId;
+
+    private static long _globalSequence;
+    private const string CsvHeader = "ExperimentRunId,ExperimentRowId,Time,Ticks,Sequence,EpisodeCount,EpisodeTotal,Steps,Reward,Entropy";
+
+    /// <summary>Column names for the live output display.</summary>
+    protected static string OutputColumns => CsvHeader;
+
+    // Browsers (Spectre mitigations) clamp performance.now() to 1 ms, so Stopwatch
+    // inside WebAssembly has the same 1 ms resolution as DateTime.UtcNow.
+    // We synthesise sub-millisecond uniqueness by tracking the last observed
+    // millisecond and incrementing a within-ms counter each call.
+    private static long _lastTimestampMs;
+    private static int _withinMsCounter;
+
+    private static string HighResTimestamp()
+    {
+        // Real-wall ms is all the browser gives us.
+        long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        int subMs;
+        lock (typeof(ExperimentPageBase))
+        {
+            if (nowMs != _lastTimestampMs)
+            {
+                _lastTimestampMs = nowMs;
+                _withinMsCounter = 0;
+            }
+            subMs = _withinMsCounter++;
+        }
+
+        // Re-construct a DateTime that includes the within-ms counter in its
+        // low-order ticks (1 tick = 100 ns; 10 ticks = 1 µs; 10 000 ticks = 1 ms).
+        // subMs counts events within the same millisecond and is stored in ticks
+        // 0-9 999 (the sub-ms part of the 7-digit fractional field).
+        var baseDto = DateTimeOffset.FromUnixTimeMilliseconds(nowMs);
+        var augmented = baseDto.UtcDateTime.AddTicks(subMs % 10_000);
+        return augmented.ToString("o"); // yyyy-MM-ddTHH:mm:ss.fffffffZ
+    }
 
     protected override void OnInitialized()
     {
@@ -56,27 +98,33 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
     {
         if (isRunning || IsBlockedByOther) return;
         isRunning = true;
+        experimentStartedAt = DateTime.Now;
+        experimentFinishedAt = DateTime.MinValue;
+        experimentElapsed = TimeSpan.Zero;
         RunnerState.Start(Source);
         cts = new CancellationTokenSource(TimeSpan.FromHours(timeoutHours));
         _currentLogId = null;
+
+        logBuilder.AppendLine(CsvHeader);
+        outputLog = logBuilder.ToString();
 
         var runLog = ExperimentLog.Create(Source, "");
         _currentLogId = runLog.Id;
         await LogRepo.AddAsync(runLog);
 
+        await AcquireWakeLockAsync();
         bool completedCleanly = false;
         try
         {
             await RunEpisodesAsync(cts.Token);
             completedCleanly = !cts.Token.IsCancellationRequested;
-            Log(completedCleanly ? "Training complete." : "Stopped.");
         }
         catch (OperationCanceledException)
         {
-            Log("Stopped.");
         }
         finally
         {
+            await ReleaseWakeLockAsync();
             if (_currentLogId.HasValue)
             {
                 await LogRepo.UpdateContentAsync(_currentLogId.Value, logBuilder.ToString());
@@ -88,6 +136,8 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
 
             RunnerState.Stop();
             isRunning = false;
+            experimentFinishedAt = DateTime.Now;
+            experimentElapsed = experimentFinishedAt - experimentStartedAt;
             cts?.Dispose();
             cts = null;
             StateHasChanged();
@@ -95,6 +145,36 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
     }
 
     protected void Stop() => cts?.Cancel();
+
+    private async Task AcquireWakeLockAsync()
+    {
+        try
+        {
+            var m = await JS.InvokeAsync<IJSObjectReference>("import", "./file-download.js");
+            await m.InvokeVoidAsync("acquireWakeLock");
+        }
+        catch { /* wake lock not supported or blocked – ignore */ }
+    }
+
+    private async Task ReleaseWakeLockAsync()
+    {
+        try
+        {
+            var m = await JS.InvokeAsync<IJSObjectReference>("import", "./file-download.js");
+            await m.InvokeVoidAsync("releaseWakeLock");
+        }
+        catch { }
+    }
+
+    /// <summary>Clears all run timing stats and output. Call from subclass Reset().</summary>
+    protected void ClearRunStats()
+    {
+        logBuilder.Clear();
+        outputLog = "";
+        experimentStartedAt = DateTime.MinValue;
+        experimentFinishedAt = DateTime.MinValue;
+        experimentElapsed = TimeSpan.Zero;
+    }
 
     /// <summary>Runs the experiment's episode loop. Implementors should respect the token.</summary>
     protected abstract Task RunEpisodesAsync(CancellationToken ct);
@@ -109,7 +189,10 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
         return Math.Clamp(b, 0, bins - 1);
     }
 
-    protected void Log(string msg)
+    /// <summary>
+    /// Appends a CSV row to the log. All string values are quoted to handle commas safely.
+    /// </summary>
+    protected void LogCsv(int episodeCount, int episodeTotal, int steps, double reward, double entropy)
     {
         logBuilder.AppendLine($"time: {DateTime.Now:o} {msg}");
         outputLog = logBuilder.ToString();

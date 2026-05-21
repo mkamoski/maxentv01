@@ -7,6 +7,8 @@
 
 <button @onclick="RefreshAsync">Refresh</button>
 
+<div style="margin-top:10px;"></div>
+
 @if (_summaries.Count == 0)
 {
     <p>No results saved yet. Run an experiment and click Save Log.</p>
@@ -17,29 +19,45 @@ else
         <thead>
             <tr>
                 <th>Source</th>
-                <th>Saved</th>
-                <th>Summary</th>
+                <th>ExperimentRunId</th>
+                <th>Started</th>
+                <th>Finished</th>
+                <th>Elapsed</th>
+                <th>Rows</th>
+                <th>Status</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
             @foreach (var s in _summaries)
             {
+                var started  = ParseIso(s.StartedTime);
+                var finished = ParseIso(s.FinishedTime);
+                var elapsed  = started.HasValue && finished.HasValue
+                    ? finished.Value - started.Value
+                    : (TimeSpan?)null;
                 <tr>
-                        <td>@s.Source</td>
-                        <td>@Local(s.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss")</td>
-                        <td>
-                            @s.Summary
-                            @if (s.Status == ExperimentRunStatus.Incomplete)
-                            {
-                                <span style="background:#dc3545;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;">Incomplete</span>
-                            }
-                        </td>
-                        <td>
-                            <button @onclick="() => SelectAsync(s.Id)">View</button>
-                            <button @onclick="() => DownloadAsync(s.Id, s.Source, s.CreatedAt)">Download</button>
-                        </td>
-                    </tr>
+                    <td>@s.Source</td>
+                    <td style="font-size:0.75em;font-family:monospace;">@s.Id</td>
+                    <td>@(started.HasValue  ? Local(started.Value).ToString("yyyy-MM-dd HH:mm:ss") : "")</td>
+                    <td>@(finished.HasValue ? Local(finished.Value).ToString("yyyy-MM-dd HH:mm:ss") : "")</td>
+                    <td>@(elapsed.HasValue  ? elapsed.Value.ToString(@"hh\:mm\:ss\.fff") : "")</td>
+                    <td>@s.RowCount</td>
+                    <td>
+                        @if (s.Status == ExperimentRunStatus.Incomplete)
+                        {
+                            <span style="background:#dc3545;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;">Incomplete</span>
+                        }
+                        else
+                        {
+                            <span style="color:#198754;font-size:10px;">Completed</span>
+                        }
+                    </td>
+                    <td>
+                        <button @onclick="() => SelectAsync(s.Id)">View</button>
+                        <button @onclick="() => DownloadAsync(s.Id, s.Source, s.CreatedAt)">Download</button>
+                    </td>
+                </tr>
             }
         </tbody>
     </table>
@@ -66,6 +84,11 @@ else
     }
 
     private DateTime Local(DateTime utc) => utc.AddMinutes(_offsetMinutes);
+
+    private static DateTime? ParseIso(string? s) =>
+        DateTime.TryParse(s, null, System.Globalization.DateTimeStyles.RoundtripKind, out var dt)
+            ? dt
+            : null;
 
     private async Task RefreshAsync()
     {
