@@ -19,6 +19,27 @@
     <button @onclick="Stop" disabled="@(!isRunning)">Stop</button>
 </div>
 
+<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
+    <label>
+        <strong>Episodes:</strong>
+        <select value="@_episodes" @onchange="e => _episodes = int.Parse(e.Value!.ToString()!)" disabled="@isRunning" style="margin-left:6px;">
+            @foreach (var n in EpisodeOptions)
+            {
+                <option value="@n" selected="@(_episodes == n)">@n</option>
+            }
+        </select>
+    </label>
+    <label>
+        <strong>Max Steps / Episode:</strong>
+        <select value="@_maxSteps" @onchange="e => _maxSteps = int.Parse(e.Value!.ToString()!)" disabled="@isRunning" style="margin-left:6px;">
+            @foreach (var s in MaxStepsOptions)
+            {
+                <option value="@s" selected="@(_maxSteps == s)">@s</option>
+            }
+        </select>
+    </label>
+</div>
+
 <div style="margin:6px 0;">
     <strong>Timeout (hours):</strong>
     @foreach (var h in TimeoutOptions)
@@ -33,10 +54,22 @@
     }
 </div>
 
+<div style="margin:4px 0;font-size:0.85em;color:#555;display:flex;gap:24px;">
+    <span><strong>Started:</strong> @experimentStartedAt.ToString("o")</span>
+    <span><strong>Finished:</strong> @experimentFinishedAt.ToString("o")</span>
+    <span><strong>Elapsed:</strong> @experimentElapsed.ToString(@"hh\:mm\:ss\.fff")</span>
+</div>
+
+<div style="font-size:0.8em;font-family:monospace;color:#555;margin-top:8px;margin-bottom:2px;">
+    <strong>Columns:</strong> @OutputColumns
+</div>
 <pre style="height:300px;overflow-y:auto;background:#111;color:#0f0;padding:8px;">@LiveLog</pre>
 
 @code {
     protected override string Source => "CartPole";
+
+    private int _episodes = 200;
+    private int _maxSteps = 500;
 
     private CartPoleEnvironment? env;
     private MaxEntAgent? agent;
@@ -64,7 +97,10 @@
         agent ??= new MaxEntAgent(stateSize: 4, actionSize: 2);
         var rng = new Random();
 
-        int episodes = 200;
+        int episodes = _episodes;
+        int maxSteps = _maxSteps;
+        int yieldEvery = YieldInterval(episodes);
+
         for (int ep = 1; ep <= episodes && !ct.IsCancellationRequested; ep++)
         {
             double[] state = env.Reset();
@@ -72,7 +108,7 @@
             bool done = false;
             int steps = 0;
 
-            while (!done && steps < 500)
+            while (!done && steps < maxSteps)
             {
                 int action = agent.SelectAction(state);
                 var (nextState, reward, isDone) = env.Step(action);
@@ -95,7 +131,7 @@
 
             LogCsv(ep, episodes, steps, totalReward, entropy);
 
-            if (ep % 10 == 0)
+            if (ep % yieldEvery == 0)
             {
                 StateHasChanged();
                 await Task.Delay(1, ct);
@@ -145,4 +181,3 @@
         }
     }
 }
-
