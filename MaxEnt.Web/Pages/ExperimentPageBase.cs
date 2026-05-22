@@ -194,7 +194,12 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
     /// </summary>
     protected void LogCsv(int episodeCount, int episodeTotal, int steps, double reward, double entropy)
     {
-        logBuilder.AppendLine($"time: {DateTime.Now:o} {msg}");
+        long ticks = TicksHelper.NextTicks();
+        long seq = System.Threading.Interlocked.Increment(ref _globalSequence);
+        string time = HighResTimestamp();
+        string id = Guid.NewGuid().ToString();
+        string runId = (_currentLogId ?? Guid.Empty).ToString();
+        logBuilder.AppendLine($"{runId},{id},{time},{ticks},{seq},{episodeCount},{episodeTotal},{steps},{reward},{entropy}");
         outputLog = logBuilder.ToString();
     }
 
