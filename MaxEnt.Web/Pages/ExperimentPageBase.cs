@@ -225,18 +225,16 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
     }
 
     /// <summary>
-    /// While running, shows only the last 5 log lines to keep the output area compact.
-    /// After the run completes, returns the full log.
+    /// Always shows only the last 10 log lines to keep the output area compact.
     /// </summary>
     protected string LiveLog
     {
         get
         {
-            if (!isRunning) return outputLog;
             var lines = outputLog.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            return lines.Length <= 5
+            return lines.Length <= 10
                 ? outputLog
-                : string.Join('\n', lines[^5..]);
+                : string.Join('\n', lines[^10..]);
         }
     }
 }
