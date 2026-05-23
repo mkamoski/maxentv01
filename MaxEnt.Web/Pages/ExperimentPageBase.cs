@@ -24,6 +24,27 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
 
     public static readonly int[] TimeoutOptions = [2, 4, 8, 16, 32];
 
+    // ── Run parameter option arrays ──────────────────────────────────────────
+    public static readonly int[] EpisodeOptions =
+        [100, 200, 300, 400, 500, 1_000, 2_000, 3_000, 4_000, 5_000, 10_000];
+
+    public static readonly int[] MaxStepsOptions =
+        [100, 200, 300, 400, 500, 1_000, 2_000];
+
+    /// <summary>
+    /// How often (in episodes) to yield to the UI during a run.
+    /// Scales so that the UI updates roughly every ~10 seconds worth of work.
+    /// </summary>
+    protected static int YieldInterval(int totalEpisodes) =>
+        totalEpisodes switch
+        {
+            <= 200  => 10,
+            <= 500  => 20,
+            <= 1000 => 50,
+            <= 3000 => 100,
+            _       => 200
+        };
+
     protected bool isRunning;
     protected bool IsBlockedByOther => RunnerState.IsRunning && RunnerState.ActiveSource != Source;
     protected string outputLog = "";
