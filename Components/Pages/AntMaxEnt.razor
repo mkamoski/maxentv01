@@ -20,8 +20,17 @@
     <div class="col-md-6">
         <h4>Simulation Parameters</h4>
         <div class="mb-2">
-            <label>Episodes: @episodes</label>
-            <input type="range" class="form-range" min="1" max="100" @bind="episodes" disabled="@isRunning" />
+            <label>Episodes:</label>
+            <select class="form-select" @bind="episodes" disabled="@isRunning">
+                <option value="20000">20000</option>
+                <option value="40000">40000</option>
+                <option value="60000">60000</option>
+                <option value="80000">80000</option>
+                <option value="200000">200000</option>
+                <option value="400000">400000</option>
+                <option value="600000">600000</option>
+                <option value="800000">800000</option>
+            </select>
         </div>
         <div class="mb-2">
             <label>Max Steps per Episode: @maxSteps</label>
@@ -99,7 +108,7 @@
     private AntMaxEntEnvironment? antEnv;
     private MaxEntAgent? agent;
 
-    private int episodes = 10;
+    private int episodes = 40000;
     private int maxSteps = 500;
     private double learningRate = 0.001;
     private double temperature = 1.0;
