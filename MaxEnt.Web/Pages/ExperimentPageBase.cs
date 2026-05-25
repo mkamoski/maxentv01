@@ -26,7 +26,7 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
 
     // ── Run parameter option arrays ──────────────────────────────────────────
     public static readonly int[] EpisodeOptions =
-        [100, 200, 300, 400, 500, 1_000, 2_000, 3_000, 4_000, 5_000, 10_000];
+        [20_000, 40_000, 60_000, 80_000, 200_000, 400_000, 600_000, 800_000];
 
     public static readonly int[] MaxStepsOptions =
         [100, 200, 300, 400, 500, 1_000, 2_000];
@@ -38,11 +38,10 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
     protected static int YieldInterval(int totalEpisodes) =>
         totalEpisodes switch
         {
-            <= 200  => 10,
-            <= 500  => 20,
-            <= 1000 => 50,
-            <= 3000 => 100,
-            _       => 200
+            <= 20_000  => 100,
+            <= 60_000  => 500,
+            <= 200_000 => 1_000,
+            _          => 2_000
         };
 
     protected bool isRunning;
