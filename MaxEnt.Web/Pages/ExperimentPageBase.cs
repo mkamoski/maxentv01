@@ -29,7 +29,7 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
         [20_000, 40_000, 60_000, 80_000, 200_000, 400_000, 600_000, 800_000];
 
     public static readonly int[] MaxStepsOptions =
-        [100, 200, 300, 400, 500, 1_000, 2_000];
+        [200, 400, 600, 800, 2000, 4000, 6000, 8000];
 
     /// <summary>
     /// How often (in episodes) to yield to the UI during a run.
