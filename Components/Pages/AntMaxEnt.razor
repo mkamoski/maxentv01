@@ -2,6 +2,7 @@
 @using MaxEnt.Logic
 @using MyMaxEntV01.Services
 @inject CartPoleChartService ChartService
+@implements IDisposable
 
 <PageTitle>Ant</PageTitle>
 
@@ -33,8 +34,17 @@
             </select>
         </div>
         <div class="mb-2">
-            <label>Max Steps per Episode: @maxSteps</label>
-            <input type="range" class="form-range" min="100" max="1000" step="50" @bind="maxSteps" disabled="@isRunning" />
+            <label>Max Steps per Episode:</label>
+            <select class="form-select" @bind="maxSteps" disabled="@isRunning">
+                <option value="200">200</option>
+                <option value="400">400</option>
+                <option value="600">600</option>
+                <option value="800">800</option>
+                <option value="2000">2000</option>
+                <option value="4000">4000</option>
+                <option value="6000">6000</option>
+                <option value="8000">8000</option>
+            </select>
         </div>
         <div class="mb-2">
             <label>Learning Rate: @learningRate.ToString("F4")</label>
@@ -48,6 +58,14 @@
     <div class="col-md-6">
         <h4>Current State</h4>
         <table class="table table-sm">
+            <tr>
+                <td>Clock:</td>
+                <td><span class="font-monospace fw-bold text-info">@_clockDisplay</span></td>
+            </tr>
+            <tr>
+                <td>Elapsed:</td>
+                <td><span class="font-monospace">@_elapsedDisplay</span></td>
+            </tr>
             <tr>
                 <td>Episode:</td>
                 <td>@currentEpisode / @episodes</td>
@@ -108,8 +126,8 @@
     private AntMaxEntEnvironment? antEnv;
     private MaxEntAgent? agent;
 
-    private int episodes = 40000;
-    private int maxSteps = 500;
+    private int episodes = 20000;
+    private int maxSteps = 200;
     private double learningRate = 0.001;
     private double temperature = 1.0;
 
@@ -119,6 +137,10 @@
 
     private bool isRunning = false;
     private CancellationTokenSource? cancellationTokenSource;
+    private DateTime? _runStarted;
+    private System.Threading.Timer? _clockTimer;
+    private string _clockDisplay = string.Empty;
+    private string _elapsedDisplay = "--:--:--";
 
     private System.Text.StringBuilder outputLogBuilder = new System.Text.StringBuilder();
     private string outputLog = string.Empty;
@@ -133,6 +155,14 @@
 
     protected override void OnInitialized()
     {
+        _clockTimer = new System.Threading.Timer(_ =>
+        {
+            _clockDisplay = DateTime.Now.ToString("HH:mm:ss");
+            _elapsedDisplay = _runStarted.HasValue
+                ? (DateTime.Now - _runStarted.Value).ToString(@"hh\:mm\:ss")
+                : "--:--:--";
+            InvokeAsync(StateHasChanged);
+        }, null, 0, 1000);
         Reset();
     }
 
@@ -167,8 +197,7 @@
 
         isRunning = true;
         cancellationTokenSource = new CancellationTokenSource();
-
-        // Update agent parameters
+        _runStarted = DateTime.Now;
         agent = new MaxEntAgent(stateSize: 27, actionSize: 8, learningRate: learningRate, temperature: temperature);
 
         // Clear previous training history
@@ -273,6 +302,7 @@
         finally
         {
             isRunning = false;
+            _runStarted = null;
             cancellationTokenSource?.Dispose();
             cancellationTokenSource = null;
             StateHasChanged();
@@ -334,5 +364,10 @@
     {
         outputLogBuilder.AppendLine(message);
         outputLog = outputLogBuilder.ToString();
+    }
+
+    public void Dispose()
+    {
+        _clockTimer?.Dispose();
     }
 }
