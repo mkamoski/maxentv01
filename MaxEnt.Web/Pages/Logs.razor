@@ -16,27 +16,22 @@ else
     <table>
         <thead>
             <tr>
-                <th>Source</th>
-                <th>Saved</th>
-                <th>Summary</th>
+                <th style="cursor:pointer;user-select:none;" @onclick="@(() => SetSort("source"))">
+                    Source @SortIndicator("source")
+                </th>
+                <th style="cursor:pointer;user-select:none;" @onclick="@(() => SetSort("file"))">
+                    File @SortIndicator("file")
+                </th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var s in _summaries)
+            @foreach (var s in Sorted())
             {
                 <tr>
                     <td>@s.Source</td>
-                    <td>@Local(s.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td><span style="font-family:monospace;font-size:0.85em;">@CsvFileName(s.Source, s.CreatedAt)</span></td>
                     <td>
-                        @s.Summary
-                        @if (s.Status == ExperimentRunStatus.Incomplete)
-                        {
-                            <span style="background:#dc3545;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;">Incomplete</span>
-                        }
-                    </td>
-                    <td>
-                        <button @onclick="() => SelectAsync(s.Id)">View</button>
                         <button @onclick="() => DownloadAsync(s.Id, s.Source, s.CreatedAt)">Download</button>
                     </td>
                 </tr>
@@ -45,18 +40,36 @@ else
     </table>
 }
 
-@if (_selected is not null)
-{
-    <hr />
-    <h3>@_selected.Source — @Local(_selected.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss")</h3>
-    <pre style="height:400px;overflow-y:auto;background:#111;color:#0f0;padding:8px;white-space:pre-wrap;">@_selected.Content</pre>
-    <button @onclick="() => _selected = null">Close</button>
-}
-
 @code {
     private List<ExperimentLogSummary> _summaries = [];
-    private ExperimentLog? _selected;
     private int _offsetMinutes;
+    private string _sortColumn = "file";
+    private bool _sortAscending = false;
+
+    private void SetSort(string column)
+    {
+        if (_sortColumn == column)
+            _sortAscending = !_sortAscending;
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+    }
+
+    private string SortIndicator(string column)
+    {
+        if (_sortColumn != column) return "⇅";
+        return _sortAscending ? "▲" : "▼";
+    }
+
+    private IEnumerable<ExperimentLogSummary> Sorted() => (_sortColumn, _sortAscending) switch
+    {
+        ("source", true)  => _summaries.OrderBy(s => s.Source),
+        ("source", false) => _summaries.OrderByDescending(s => s.Source),
+        ("file",   true)  => _summaries.OrderBy(s => s.CreatedAt),
+        _                 => _summaries.OrderByDescending(s => s.CreatedAt),
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -70,19 +83,19 @@ else
     private async Task RefreshAsync()
     {
         _summaries = await LogRepo.GetSummariesAsync();
-        _selected = null;
     }
 
-    private async Task SelectAsync(Guid id) =>
-        _selected = await LogRepo.GetByIdAsync(id);
+    private string CsvFileName(string source, DateTime createdAt)
+    {
+        var localTime = Local(createdAt);
+        var shortSource = source.Replace("MaxEnt", string.Empty);
+        return $"MaxEnt_{shortSource}_{localTime:yyyy_MM_dd_HHmm_ss_fffff}.csv";
+    }
 
     private async Task DownloadAsync(Guid id, string source, DateTime createdAt)
     {
         var log = await LogRepo.GetByIdAsync(id);
         if (log is null) return;
-        var localTime = Local(createdAt);
-        var shortSource = source.Replace("MaxEnt", string.Empty);
-        var fileName = $"MaxEnt_{shortSource}_{localTime:yyyy_MM_dd_HHmm_ss_fffff}.csv";
-        await FileDownload.DownloadTextAsync(log.Content, fileName);
+        await FileDownload.DownloadTextAsync(log.Content, CsvFileName(source, createdAt));
     }
 }
