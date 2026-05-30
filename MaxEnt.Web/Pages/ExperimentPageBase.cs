@@ -26,7 +26,7 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
 
     // ── Run parameter option arrays ──────────────────────────────────────────
     public static readonly int[] EpisodeOptions =
-        [20_000, 40_000, 60_000, 80_000, 200_000, 400_000, 600_000, 800_000];
+        [2_000, 4_000, 6_000, 8_000, 20_000, 40_000, 60_000, 80_000, 200_000, 400_000, 600_000, 800_000];
 
     public static readonly int[] MaxStepsOptions =
         [200, 400, 600, 800, 2000, 4000, 6000, 8000];
