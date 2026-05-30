@@ -18,13 +18,13 @@ else
     <table>
         <thead>
             <tr>
-                <th>Source</th>
-                <th>ExperimentRunId</th>
-                <th>Started</th>
-                <th>Finished</th>
-                <th>Elapsed</th>
-                <th>Rows</th>
-                <th>Status</th>
+                <th style="font-family:Consolas,monospace;font-size:10pt;">Source</th>
+                <th style="font-family:Consolas,monospace;font-size:10pt;">ExperimentRunId</th>
+                <th style="font-family:Consolas,monospace;font-size:10pt;">Started</th>
+                <th style="font-family:Consolas,monospace;font-size:10pt;">Finished</th>
+                <th style="font-family:Consolas,monospace;font-size:10pt;">Elapsed</th>
+                <th style="font-family:Consolas,monospace;font-size:10pt;">Rows</th>
+                <th style="font-family:Consolas,monospace;font-size:10pt;">Status</th>
                 <th></th>
             </tr>
         </thead>
@@ -37,24 +37,23 @@ else
                     ? finished.Value - started.Value
                     : (TimeSpan?)null;
                 <tr>
-                    <td>@s.Source</td>
-                    <td style="font-size:0.75em;font-family:monospace;">@s.Id</td>
-                    <td>@(started.HasValue  ? Local(started.Value).ToString("yyyy-MM-dd HH:mm:ss") : "")</td>
-                    <td>@(finished.HasValue ? Local(finished.Value).ToString("yyyy-MM-dd HH:mm:ss") : "")</td>
-                    <td>@(elapsed.HasValue  ? elapsed.Value.ToString(@"hh\:mm\:ss\.fff") : "")</td>
-                    <td>@s.RowCount</td>
-                    <td>
+                    <td style="font-family:Consolas,monospace;font-size:10pt;">@s.Source</td>
+                    <td style="font-family:Consolas,monospace;font-size:10pt;">@s.Id</td>
+                    <td style="font-family:Consolas,monospace;font-size:10pt;">@(started.HasValue  ? Local(started.Value).ToString("yyyy-MM-dd HH:mm:ss") : "")</td>
+                    <td style="font-family:Consolas,monospace;font-size:10pt;">@(finished.HasValue ? Local(finished.Value).ToString("yyyy-MM-dd HH:mm:ss") : "")</td>
+                    <td style="font-family:Consolas,monospace;font-size:10pt;">@(elapsed.HasValue  ? elapsed.Value.ToString(@"hh\:mm\:ss\.fff") : "")</td>
+                    <td style="font-family:Consolas,monospace;font-size:10pt;">@s.RowCount</td>
+                    <td style="font-family:Consolas,monospace;font-size:10pt;">
                         @if (s.Status == ExperimentRunStatus.Incomplete)
                         {
-                            <span style="background:#dc3545;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;">Incomplete</span>
+                            <span style="background:#dc3545;color:#fff;font-size:10pt;padding:1px 5px;border-radius:3px;">Incomplete</span>
                         }
                         else
                         {
-                            <span style="color:#198754;font-size:10px;">Completed</span>
+                            <span style="color:#198754;font-size:10pt;">Completed</span>
                         }
                     </td>
                     <td>
-                        <button @onclick="() => SelectAsync(s.Id)">View</button>
                         <button @onclick="() => DownloadAsync(s.Id, s.Source, s.CreatedAt)">Download</button>
                     </td>
                 </tr>
@@ -63,17 +62,8 @@ else
     </table>
 }
 
-@if (_selected is not null)
-{
-    <hr />
-    <h3>@_selected.Source — @Local(_selected.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss")</h3>
-    <pre style="height:400px;overflow-y:auto;background:#111;color:#0f0;padding:8px;white-space:pre-wrap;">@_selected.Content</pre>
-    <button @onclick="() => _selected = null">Close</button>
-}
-
 @code {
     private List<ExperimentLogSummary> _summaries = [];
-    private ExperimentLog? _selected;
     private int _offsetMinutes;
 
     protected override async Task OnInitializedAsync()
@@ -93,11 +83,7 @@ else
     private async Task RefreshAsync()
     {
         _summaries = await LogRepo.GetSummariesAsync();
-        _selected = null;
     }
-
-    private async Task SelectAsync(Guid id) =>
-        _selected = await LogRepo.GetByIdAsync(id);
 
     private async Task DownloadAsync(Guid id, string source, DateTime createdAt)
     {
