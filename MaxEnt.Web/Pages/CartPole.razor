@@ -30,7 +30,7 @@
         </select>
     </label>
     <label>
-        <strong>Max Steps / Episode:</strong>
+        <strong>Steps Per Episode:</strong>
         <select value="@_maxSteps" @onchange="e => _maxSteps = int.Parse(e.Value!.ToString()!)" disabled="@isRunning" style="margin-left:6px;">
             @foreach (var s in MaxStepsOptions)
             {
@@ -78,7 +78,7 @@
 @code {
     protected override string Source => "CartPole";
 
-    private int _episodes = 2_000;
+    private int _episodes = 200;
     private int _maxSteps = 200;
 
     private TimeSpan _liveElapsed = TimeSpan.Zero;

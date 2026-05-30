@@ -19,7 +19,6 @@ else
         <thead>
             <tr>
                 <th style="font-family:Consolas,monospace;font-size:10pt;">Source</th>
-                <th style="font-family:Consolas,monospace;font-size:10pt;">ExperimentRunId</th>
                 <th style="font-family:Consolas,monospace;font-size:10pt;">Started</th>
                 <th style="font-family:Consolas,monospace;font-size:10pt;">Finished</th>
                 <th style="font-family:Consolas,monospace;font-size:10pt;">Elapsed</th>
@@ -38,7 +37,6 @@ else
                     : (TimeSpan?)null;
                 <tr>
                     <td style="font-family:Consolas,monospace;font-size:10pt;">@s.Source</td>
-                    <td style="font-family:Consolas,monospace;font-size:10pt;">@s.Id</td>
                     <td style="font-family:Consolas,monospace;font-size:10pt;">@(started.HasValue  ? Local(started.Value).ToString("yyyy-MM-dd HH:mm:ss") : "")</td>
                     <td style="font-family:Consolas,monospace;font-size:10pt;">@(finished.HasValue ? Local(finished.Value).ToString("yyyy-MM-dd HH:mm:ss") : "")</td>
                     <td style="font-family:Consolas,monospace;font-size:10pt;">@(elapsed.HasValue  ? elapsed.Value.ToString(@"hh\:mm\:ss\.fff") : "")</td>

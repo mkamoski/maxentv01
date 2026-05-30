@@ -26,10 +26,10 @@ public abstract class ExperimentPageBase : ComponentBase, IDisposable
 
     // ── Run parameter option arrays ──────────────────────────────────────────
     public static readonly int[] EpisodeOptions =
-        [2_000, 4_000, 6_000, 8_000, 20_000, 40_000, 60_000, 80_000, 200_000, 400_000, 600_000, 800_000];
+        [200, 400, 600, 800, 2000, 4000, 6000, 8000, 20000, 40000, 60000, 80000, 200000, 400000, 600000, 800000];
 
     public static readonly int[] MaxStepsOptions =
-        [200, 400, 600, 800, 2000, 4000, 6000, 8000];
+        [200, 400, 600, 800, 2000, 4000, 6000, 8000, 20000, 40000, 60000, 80000, 200000, 400000, 600000, 800000];
 
     /// <summary>
     /// How often (in episodes) to yield to the UI during a run.

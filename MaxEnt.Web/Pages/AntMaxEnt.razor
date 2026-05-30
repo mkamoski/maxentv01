@@ -30,7 +30,7 @@
         </select>
     </label>
     <label>
-        <strong>Max Steps / Episode:</strong>
+        <strong>Steps Per Episode:</strong>
         <select value="@_maxSteps" @onchange="e => _maxSteps = int.Parse(e.Value!.ToString()!)" disabled="@isRunning" style="margin-left:6px;">
             @foreach (var s in MaxStepsOptions)
             {
@@ -78,7 +78,7 @@
 @code {
     protected override string Source => "AntMaxEnt";
 
-    private int _episodes = 2_000;
+    private int _episodes = 200;
     private int _maxSteps = 200;
 
     private TimeSpan _liveElapsed = TimeSpan.Zero;
@@ -127,7 +127,6 @@
     {
         env ??= new AntMaxEntEnvironment();
         agent ??= new MaxEntAgent(stateSize: 27, actionSize: 8);
-        var rng = new Random();
 
         int episodes = _episodes;
         int maxSteps = _maxSteps;
@@ -142,11 +141,17 @@
 
             while (!done && steps < maxSteps)
             {
+                // Use agent for action selection so actionProbabilities stay updated
+                int actionIndex = agent.SelectAction(state);
+
+                // Map discrete action index to 8 continuous joint torques [-1, 1]
                 double[] actions = new double[8];
                 for (int i = 0; i < 8; i++)
-                    actions[i] = (rng.NextDouble() * 2 - 1);
+                    actions[i] = (actionIndex >> i & 1) == 1 ? 1.0 : -1.0;
 
                 var (nextState, reward, isDone) = env.Step(actions);
+
+                agent.Learn(state, actionIndex, reward, nextState, isDone);
 
                 int bx = StateBin(env.PositionX, -PosRange, PosRange, Bins);
                 int by = StateBin(env.PositionY, -PosRange, PosRange, Bins);
@@ -162,7 +167,7 @@
             double entropy = agent.GetEntropy();
             maxEntEntropies.Add(entropy);
             // random baseline: uniform over 8 actions → ln(8)
-            randomEntropies.Add(Math.Log(8) * (0.9 + rng.NextDouble() * 0.2));
+            randomEntropies.Add(Math.Log(8));
 
             LogCsv(ep, episodes, steps, totalReward, entropy);
 
